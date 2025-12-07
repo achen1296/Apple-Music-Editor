@@ -53,6 +53,8 @@ def load_library(file: Path | str) -> bytes:
 
 
 def save_library(file: Path | str, library: bytes,):
+    # straightforward inverse of `load_library`
+
     header_size, encrypted_size = library_header_sizes(library, check_file_size=False)
 
     header = library[:header_size]
