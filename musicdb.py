@@ -3,7 +3,7 @@ from pathlib import Path
 
 from Crypto.Cipher import AES
 
-from util import expect, expect_one_of, unpack_one
+from util import expect, unpack_int
 
 KEY = b"BHUILuilfghuila3"
 CIPHER = AES.new(KEY, AES.MODE_ECB)
@@ -14,15 +14,15 @@ def library_header_sizes(library: bytes, check_file_size=True):
 
     expect(library[:4], b"hfma", "musicdb file should start with hfma chunk!")
 
-    header_size = unpack_one("<I", library, 4)
+    header_size = unpack_int(library, 4)
 
-    file_size = unpack_one("<I", library, 8)
+    file_size = unpack_int(library, 8)
     if check_file_size:
         expect(len(library), file_size, "file size metadata mismatch!")
 
     data_size = file_size - header_size
 
-    encrypted_size = unpack_one("<I", library, 84)
+    encrypted_size = unpack_int(library, 84)
     encrypted_size = data_size - (data_size % 16) if encrypted_size > file_size else encrypted_size
 
     return header_size, encrypted_size
@@ -35,6 +35,7 @@ def load_library(file: Path | str) -> bytes:
     # - type annotations
     # - hardcoded the encryption key
     # - factored out library_header_sizes to also use in save_library (which has to not check the file size due to compression being part of the transformation)
+    # - changed unpack_one to unpack_int
 
     with open(file, "rb") as f:
         file_bytes = f.read()
