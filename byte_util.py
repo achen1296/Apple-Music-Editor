@@ -1,12 +1,6 @@
 import struct
 
 
-def expect[T](actual: T, expected: T, message: str):
-    # copied from https://github.com/jsharkey13/musicdb-to-json
-    if actual != expected:
-        raise ValueError(f"{message} (expected: {expected}, actual: {actual})")
-
-
 def expect_one_of[T](actual: T, expected_patterns: list[T | None], message: str):
     # copied from https://github.com/jsharkey13/musicdb-to-json
     if any(actual == x for x in expected_patterns):
@@ -26,3 +20,11 @@ def unpack_one(fmt: str, b: bytes, offset: int):
 
 def unpack_int(b: bytes, offset: int) -> int:
     return unpack_one("<I", b, offset)
+
+
+def pack_int_into(b: bytearray, offset: int, value: int):
+    struct.pack_into("<I", b, offset, value)
+
+
+def pack_int(value: int):
+    return struct.pack("<I", value)
