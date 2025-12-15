@@ -2,10 +2,11 @@
 
 Editor for Apple Music's Library.musicdb file.
 
-Based on and copying code (see the comments in the code) from:
+Based on and copying some code from:
 - https://home.vollink.com/gary/playlister/musicdb.html
 - https://github.com/rinsuki/musicdb2sqlite
 - https://github.com/jsharkey13/musicdb-to-json
+(see the comments in the code for where I am copying, everything else is mine)
 
 However, unlike these, this project aims not only to read the Library.musicdb file, but also to be able to edit it. How can this be, when large parts of the file format remain a mystery? Simple:
 - *start with a known valid file*

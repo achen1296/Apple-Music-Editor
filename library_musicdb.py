@@ -1,4 +1,7 @@
+import os
+import shutil
 import zlib
+from datetime import datetime
 from pathlib import Path
 
 from Crypto.Cipher import AES
@@ -28,7 +31,11 @@ def library_header_sizes(library: bytes, check_file_size=True):
     return header_size, encrypted_size
 
 
-def load_library(file: Path | str) -> bytes:
+# this default is suitable for Windows
+DEFAULT_LIBRARY_FILE = Path(os.environ["USERPROFILE"]) / "Music" / "Apple Music" / "Apple Music Library.musiclibrary" / "Library.musicdb"
+
+
+def load_library(file: Path | str = DEFAULT_LIBRARY_FILE) -> bytes:
     # copied from https://github.com/jsharkey13/musicdb-to-json
     # changes:
     # - renames
@@ -52,7 +59,7 @@ def load_library(file: Path | str) -> bytes:
     return raw_bytes
 
 
-def save_library(file: Path | str, library: bytes,):
+def save_library(library: bytes, file: Path | str = DEFAULT_LIBRARY_FILE, make_backup = True):
     # straightforward inverse of `load_library`
 
     header_size, encrypted_size = library_header_sizes(library, check_file_size=False)
@@ -64,6 +71,10 @@ def save_library(file: Path | str, library: bytes,):
 
     encrypted = CIPHER.encrypt(compressed[:encrypted_size])
     rest_of_compressed = compressed[encrypted_size:]
+
+    file = Path(file)
+    if make_backup and file.exists():
+        os.rename(file, file.with_stem(f"{file.stem} backup {datetime.now().isoformat(timespec="seconds").replace(":", ".")}"))
 
     with open(file, "wb") as f:
         f.write(header + encrypted + rest_of_compressed)
