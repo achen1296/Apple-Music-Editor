@@ -3,7 +3,7 @@ from pathlib import Path
 
 from Crypto.Cipher import AES
 
-from util import expect, unpack_int
+from byte_util import expect, unpack_int
 
 KEY = b"BHUILuilfghuila3"
 CIPHER = AES.new(KEY, AES.MODE_ECB)
