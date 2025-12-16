@@ -153,7 +153,7 @@ class Section:
         """ Use this one when loading! `total_size` will not be correct until this section and all subsections are loaded! """
         if self.offsets["total_size"] < 0:
             raise ValueError(f"{self.__class__.__name__} section doesn't have a stored total size")
-        return unpack_int(self._data, self.offsets["total_size"])
+        return self.get_int("total_size")
 
     @property
     def subsection_count(self):
@@ -168,7 +168,7 @@ class Section:
         """ Use this one when loading! `subsection_count` will not be correct until this section and all subsections are loaded! """
         if self.offsets["subsection_count"] < 0:
             raise ValueError(f"{self.__class__.__name__} section doesn't have a stored subsection count")
-        return unpack_int(self._data, self.offsets["subsection_count"])
+        return self.get_int("subsection_count")
 
     def __init__(self, data: BytesIO, check_signature = True):
         self._signature = None
@@ -263,6 +263,11 @@ class Section:
         if isinstance(offset, str):
             offset = self.offsets[offset]
         pack_int_into(self._data, offset, value)
+
+    def get_int(self, offset:int| str):
+        if isinstance(offset, str):
+            offset = self.offsets[offset]
+        return unpack_int(self._data, offset)
 
 
 class hsma(Section):
