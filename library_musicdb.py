@@ -128,7 +128,7 @@ class Section:
     @property
     def size(self):
         if self._changed_size:
-            pack_int_into(self._data, self.offsets["size"], len(self._data))
+            self.set_int("size", len(self._data))
             # do not change back to self._changed_size = False because supersections might not have seen tha the size changed yet!
             # better to update the size multiple times redundantly than not to set it at all
         return len(self._data)
@@ -143,7 +143,7 @@ class Section:
         """ Size of this section and all subsections, referred to as "associated sections length" on vollink """
         if self.offsets["total_size"] >= 0 and any(s._changed_size for s in self):
             total_size = sum(s.size for s in self)
-            pack_int_into(self._data, self.offsets["total_size"], total_size)
+            self.set_int("total_size", total_size)
             return total_size
         else:
             return sum(s.size for s in self)
@@ -159,7 +159,7 @@ class Section:
     def subsection_count(self):
         """ Referred to as "how many sections follow" on vollink """
         if self.offsets["subsection_count"] >= 0 and self._subsection_count_changed:
-            pack_int_into(self._data, self.offsets["subsection_count"], len(self.subsections))
+            self.set_int("subsection_count", len(self.subsections))
             self._subsection_count_changed = False
         return len(self.subsections)
 
@@ -233,7 +233,7 @@ class Section:
 
         if self.offsets["date_modified"] >= 0 and any(s._edited for s in self):
             # +2082844800 to convert Unix epoch (Jan 1 1970) to Mac epoch (Jan 1 1904)
-            pack_int_into(self._data, self.offsets["date_modified"], int(datetime.now(tz=timezone.utc).timestamp()) + 2082844800)
+            self.set_int("date_modified", int(datetime.now(tz=timezone.utc).timestamp()) + 2082844800)
             # do not change back to self._edited = False because supersections might not have seen yet
 
         # run the logic to update these in their property methods
@@ -258,8 +258,10 @@ class Section:
     def __repr__(self):
         return self.__str__()
 
-    def edit_int(self, offset: int, value: int):
+    def set_int(self, offset: int | str, value: int):
         self._edit()
+        if isinstance(offset, str):
+            offset = self.offsets[offset]
         pack_int_into(self._data, offset, value)
 
 
@@ -448,4 +450,5 @@ class Library(Section):
 
 
 if __name__ == "__main__":
-    print(Library())
+    library = Library()
+    # print(library)
