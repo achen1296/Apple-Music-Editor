@@ -1,9 +1,9 @@
 import os
 import zlib
 from datetime import datetime, timezone
-from io import BytesIO
+from io import SEEK_CUR, BytesIO
 from pathlib import Path
-from typing import Iterable, Iterator, override
+from typing import Callable, Iterable, Iterator, Type, override
 
 from Crypto.Cipher import AES
 
@@ -99,8 +99,14 @@ def save_library_bytes(
             f.write(rest_of_compressed)
 
 
+SECTION_CLASSES: dict[bytes, Type["Section"]] = {}
+
+
+def register_section_class(cls: Type["Section"]):
+    SECTION_CLASSES[bytes(cls.__name__, "ascii")] = cls
+
+
 class Section:
-    expected_signature: bytes = b""
     offsets: dict[str, int] = {
         "signature": 0,
         "size": 4,
@@ -109,6 +115,8 @@ class Section:
         "subsection_count": -1,
         "date_modified": -1,
     }
+    allowed_subsections: set[bytes] = set()
+    check_signature = True  # only disabled for Library which has hfma signature
 
     @property
     def signature(self):
@@ -144,7 +152,7 @@ class Section:
     def total_size_from_data(self):
         """ Use this one when loading! `total_size` will not be correct until this section and all subsections are loaded! """
         if self.offsets["total_size"] < 0:
-            raise ValueError(f"{self.expected_signature} section doesn't have a stored total size")
+            raise ValueError(f"{self.__class__.__name__} section doesn't have a stored total size")
         return unpack_int(self._data, self.offsets["total_size"])
 
     @property
@@ -155,21 +163,58 @@ class Section:
             self._subsection_count_changed = False
         return len(self.subsections)
 
-    def __init__(self, data: BytesIO):
+    @property
+    def subsection_count_from_data(self):
+        """ Use this one when loading! `subsection_count` will not be correct until this section and all subsections are loaded! """
+        if self.offsets["subsection_count"] < 0:
+            raise ValueError(f"{self.__class__.__name__} section doesn't have a stored subsection count")
+        return unpack_int(self._data, self.offsets["subsection_count"])
+
+    def __init__(self, data: BytesIO, check_signature = True):
         self._signature = None
 
         self._edited = False
         self._changed_size = False
         self._subsection_count_changed = False
 
+        start_offset = data.tell()
+
+        # read this section
         self._data = bytearray(data.read(self.offsets["size"] + 4))
         self._data += data.read(self.size_from_data - (self.offsets["size"] + 4))
         assert self.size == self.size_from_data  # make sure read() did not stop short
 
-        assert self.expected_signature == self.signature, (self.expected_signature, self.signature)
+        if self.check_signature and check_signature: # can be turned off either at class level or by caller
+            assert SECTION_CLASSES[bytes(self.signature)] is self.__class__, (SECTION_CLASSES[bytes(self.signature)], self.__class__)
 
+        # read subsections -- only if there is either a total size or a subsection count in the data (sometimes both are present, doesn't matter which is used in that case for a valid file)
         self.subsections: list["Section"] = []
-        # subclass should take care of loading subsections, advancing the BytesIO accordingly
+
+        def append_subsection():
+            signature = data.read(4)
+            data.seek(-4, SEEK_CUR)
+
+            if signature in SECTION_CLASSES:
+                if signature in self.allowed_subsections:
+                    self.subsections.append(
+                        SECTION_CLASSES[signature](data)
+                    )
+                else:
+                    raise ValueError(f"unexpected subsection signature {signature} for subsection of {self.__class__.__name__}")
+            else:
+                print(f"warning: unknown signature {signature}, loading it with the `Section` base class")
+                self.subsections.append(
+                    Section(data, check_signature=False)  # use a generic section just to have something for limited forward compatibility with unknown future section types
+                )
+
+        if self.offsets["total_size"] > 0:
+            total_size = self.total_size_from_data
+            while data.tell() < start_offset + total_size:
+                append_subsection()
+            assert data.tell() == start_offset + total_size
+        elif self.offsets["subsection_count"] > 0:
+            for _ in range(0, self.subsection_count_from_data):
+                append_subsection()
 
     def _edit(self):
         self._edited = True
@@ -205,7 +250,10 @@ class Section:
             yield from s
 
     def __str__(self):
-        return f"{self.__class__.__name__} [{", ".join(str(s) for s in self.subsections)}]"
+        if self.subsections:
+            return f"{self.__class__.__name__} [{", ".join(str(s) for s in self.subsections)}]"
+        else:
+            return f"{self.__class__.__name__}"
 
     def __repr__(self):
         return self.__str__()
@@ -215,25 +263,157 @@ class Section:
         pack_int_into(self._data, offset, value)
 
 
+class hsma(Section):
+    offsets = {
+        **Section.offsets,
+        "total_size": 8,
+    }
+    allowed_subsections = {
+        b"hfma",
+        b"plma",
+        b"lama",
+        b"lAma",
+        b"ltma",
+        b"lPma",
+        b"LPma",
+    }
+
+
+register_section_class(hsma)
+
+
+class hfma(Section):  # inner hfma only, not outer hfma which is Library
+    offsets = {
+        **Section.offsets,
+    }
+
+
+register_section_class(hfma)
+
+
+class plma(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+    allowed_subsections = {b"boma"}
+
+
+register_section_class(plma)
+
+
+class lama(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+    allowed_subsections = {b"iama"}
+
+
+register_section_class(lama)
+
+
+class iama(Section):
+    offsets = {
+        **Section.offsets,
+        "total_size": 8,
+        "subsection_count": 12,
+    }
+    allowed_subsections = {b"boma"}
+
+
+register_section_class(iama)
+
+
+class lAma(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+    allowed_subsections = {b"iAma"}
+
+
+register_section_class(lAma)
+
+
+class iAma(Section):
+    offsets = {
+        **Section.offsets,
+        "total_size": 8,
+        "subsection_count": 12,
+    }
+    allowed_subsections = {b"boma"}
+
+
+register_section_class(iAma)
+
+
+class ltma(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+    allowed_subsections = {b"itma"}
+
+
+register_section_class(ltma)
+
+
+class itma(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 12,
+    }
+    allowed_subsections = {b"boma"}
+
+
+register_section_class(itma)
+
+
+class lPma(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+    allowed_subsections = {b"lpma"}
+
+
+register_section_class(lPma)
+
+
+class lpma(Section):
+    offsets = {
+        **Section.offsets,
+        "total_size": 8,
+        "subsection_count": 12,
+    }
+    allowed_subsections = {b"boma"}
+
+
+register_section_class(lpma)
+
+
 class boma(Section):
-    expected_signature = b"boma"
     offsets = {
         **Section.offsets,
         "size": 8,  # only this section type has the size in a different place
     }
 
 
-class hsma(Section):
-    expected_signature = b"hsma"
+register_section_class(boma)
+
+
+# - this section type is not known
+# - it appears exactly once at the end of my library in its own hsma
+# - it only appears recently (as of December 2025), since a copy from a few months ago doesn't have it
+# - other than the usual signature + section size, it mostly contains zeros -- except for a single 06 at offset 12
+class LPma(Section):
     offsets = {
         **Section.offsets,
-        "total_size": 8,
     }
 
-    @override
-    def __init__(self, data: BytesIO):
-        super().__init__(data)
-        data.read(self.total_size_from_data - self.size)  # todo actually read subsections
+
+register_section_class(LPma)
 
 
 class Library(Section):
@@ -245,19 +425,23 @@ class Library(Section):
         **Section.offsets,
         "date_modified": 100
     }
+    check_signature = False
 
     @override
     def __init__(self, library: bytes | bytearray | Path | str = DEFAULT_LIBRARY_FILE):
         if not (isinstance(library, bytes) or isinstance(library, bytearray)):
             library = load_library_bytes(library)
 
-        bio = BytesIO(library)
-        super().__init__(bio)
+        data = BytesIO(library)
+        super().__init__(data)
 
-        while bio.tell() < len(library):
+        # can't use superclass __init__ loop because the outer hfma header doesn't have anything corresponding to total_size or subsection_count, because the total file length is supposed to be AFTER encryption+compression
+        while data.tell() < len(library):
             self.subsections.append(
-                hsma(bio)
+                hsma(data)
             )
+
+        assert data.tell() == len(library)
 
     def save(self, *args, **kwargs):
         save_library_bytes(b''.join(s.data for s in self), *args, **kwargs)
