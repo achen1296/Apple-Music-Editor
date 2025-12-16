@@ -184,13 +184,14 @@ class Section:
 
     @property
     def data(self):
+        # this makes sure everything is updated when we go to write
+
         if self.offsets["date_modified"] >= 0 and any(s._edited for s in self):
             # +2082844800 to convert Unix epoch (Jan 1 1970) to Mac epoch (Jan 1 1904)
             pack_int_into(self._data, self.offsets["date_modified"], int(datetime.now(tz=timezone.utc).timestamp()) + 2082844800)
             # do not change back to self._edited = False because supersections might not have seen yet
 
         # run the logic to update these in their property methods
-        # this makes sure they are definitely updated when we go to write
         self.size
         self.total_size
         self.subsection_count
@@ -202,6 +203,12 @@ class Section:
         yield self
         for s in self.subsections:
             yield from s
+
+    def __str__(self):
+        return f"{self.__class__.__name__} [{", ".join(str(s) for s in self.subsections)}]"
+
+    def __repr__(self):
+        return self.__str__()
 
     def edit_int(self, offset: int, value: int):
         self._edit()
@@ -257,4 +264,4 @@ class Library(Section):
 
 
 if __name__ == "__main__":
-    print(Library().subsections)
+    print(Library())
