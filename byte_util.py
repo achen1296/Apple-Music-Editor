@@ -28,3 +28,15 @@ def pack_int_into(b: bytearray, offset: int, value: int):
 
 def pack_int(value: int):
     return struct.pack("<I", value)
+
+
+def show_control_chars(s: str):
+    # for debugging
+    return "".join(
+        c
+        # printable, tab, or newline (both kinds) pass through as-is
+        if 0x20 <= ord(c) <= 0x7e or c in "\t\r\n"
+        # for non-printables, replace with \x code
+        else f"<{ord(c):02x}>"
+        for c in s
+    )
