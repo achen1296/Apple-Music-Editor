@@ -136,7 +136,7 @@ class Section:
     @property
     def size_from_data(self):
         """ Use this one when loading! `size` will not be correct until this section is fully loaded! """
-        return unpack_int(self._data, self.offsets["size"])
+        return self.get_int("size")
 
     @property
     def total_size(self):
@@ -170,7 +170,7 @@ class Section:
             raise ValueError(f"{self.__class__.__name__} section doesn't have a stored subsection count")
         return self.get_int("subsection_count")
 
-    def __init__(self, data: BytesIO, check_signature = True):
+    def __init__(self, data: BytesIO, check_signature=True):
         self._signature = None
 
         self._edited = False
@@ -184,7 +184,7 @@ class Section:
         self._data += data.read(self.size_from_data - (self.offsets["size"] + 4))
         assert self.size == self.size_from_data  # make sure read() did not stop short
 
-        if self.check_signature and check_signature: # can be turned off either at class level or by caller
+        if self.check_signature and check_signature:  # can be turned off either at class level or by caller
             assert SECTION_CLASSES[bytes(self.signature)] is self.__class__, (SECTION_CLASSES[bytes(self.signature)], self.__class__)
 
         # read subsections -- only if there is either a total size or a subsection count in the data (sometimes both are present, doesn't matter which is used in that case for a valid file)
@@ -264,7 +264,7 @@ class Section:
             offset = self.offsets[offset]
         pack_int_into(self._data, offset, value)
 
-    def get_int(self, offset:int| str):
+    def get_int(self, offset: int | str):
         if isinstance(offset, str):
             offset = self.offsets[offset]
         return unpack_int(self._data, offset)
