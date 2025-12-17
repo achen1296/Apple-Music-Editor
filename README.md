@@ -16,6 +16,10 @@ However, unlike these, this project aims not only to read the Library.musicdb fi
 
 This approach means we cannot *add* whole new entries to arrays, e.g. add a new song. (In the future I might try doing this by copying the mystery data from another entry of the same type.)
 
+*Note that this code does not support the book subtype of boma sections, because, as mentioned below, my library doesn't have any I could test with, which makes me suspect they are no longer in use anyway.*
+
+*In general, I just know it works on my own library file with the types of edits I wanted to do, so I can't give any guarantees about what it does to your library file. For this reason I've made it automatically make backups when you use the program to edit your library, unless you specifically turn them off.*
+
 # Miscellaneous Observations
 
 Keep in mind these observations are only based on my personal library file, which is the only one I have access to (although I do have 2 copies — one from now (December 2025), and one from 3 months ago (September), which have some significant differences as described below).
