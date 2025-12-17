@@ -1,13 +1,14 @@
 import os
 import zlib
 from datetime import datetime, timezone
+from enum import Enum
 from io import SEEK_CUR, BytesIO
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, Type, override
 
 from Crypto.Cipher import AES
 
-from byte_util import pack_int, pack_int_into, unpack_int
+from byte_util import pack_int, pack_int_into, show_control_chars, unpack_int
 
 KEY = b"BHUILuilfghuila3"
 CIPHER = AES.new(KEY, AES.MODE_ECB)
@@ -224,6 +225,7 @@ class Section:
     def _edit_change_size(self):
         self._edited = True
         self._changed_size = True
+        self._updated_size_after_change = False
 
     def _edit_change_subsection_count(self):
         self._edited = True
@@ -406,7 +408,37 @@ class boma(Section):
     offsets = {
         **Section.offsets,
         "size": 8,  # only this section type has the size in a different place
+        "boma_subtype": 12,
     }
+
+    def get_string(self):
+        """ See `set_string` """
+        string_format = self.get_int(20)
+        if string_format == 1:
+            return self._data[36:].decode("utf_16_le")
+        elif string_format == 2:
+            return self._data[36:].decode("utf_8")
+        else:
+            return self._data[20:].decode("utf_8")
+
+
+    def set_string(self, value: str):
+        """ Checks offset 20 to see if it's 1 or 2 to determine the string format -- but if it's not either of these, defaults to writing UTF-8 at offset 20 instead! Other than that, this function does not know (this cannot be 100% reliably figured out from the data itself) if the data is supposed to be a string or what format, so the caller should know that in advance or risk corruption. See readme/vollink.
+
+        No offset argument because each boma can only contain one string at most (book types not supported -- see readme). """
+
+        self._edit_change_size()
+
+        string_format = self.get_int(20)
+        if string_format == 1:
+            self._data[36:] = value.encode("utf_16_le")
+            # superclass will take care of the section length
+            self.set_int(24, self.size - 36)
+        elif string_format == 2:
+            self._data[36:] = value.encode("utf_8")
+            self.set_int(24, self.size - 36)
+        else:
+            self._data[20:] = value.encode("utf_8")
 
 
 register_section_class(boma)
