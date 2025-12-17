@@ -423,7 +423,7 @@ class boma(Section):
 
 
     def set_string(self, value: str):
-        """ Checks offset 20 to see if it's 1 or 2 to determine the string format -- but if it's not either of these, defaults to writing UTF-8 at offset 20 instead! Other than that, this function does not know (this cannot be 100% reliably figured out from the data itself) if the data is supposed to be a string or what format, so the caller should know that in advance or risk corruption. See readme/vollink.
+        """ Checks offset 20 to see if it's 1 or 2 to determine the string format -- but if it's not either of these, defaults to writing UTF-8 at offset 20 instead! Other than that, this function does not know (this cannot be 100% reliably figured out from the data itself) if the data is supposed to be a string at all, so the caller should know that in advance (from the subtype number) or risk corruption. See readme/vollink.
 
         No offset argument because each boma can only contain one string at most (book types not supported -- see readme). """
 
@@ -444,10 +444,7 @@ class boma(Section):
 register_section_class(boma)
 
 
-# - this section type is not known
-# - it appears exactly once at the end of my library in its own hsma
-# - it only appears recently (as of December 2025), since a copy from a few months ago doesn't have it
-# - other than the usual signature + section size, it mostly contains zeros -- except for a single 06 at offset 12
+# see readme
 class LPma(Section):
     offsets = {
         **Section.offsets,
@@ -458,15 +455,14 @@ register_section_class(LPma)
 
 
 class Library(Section):
-    # subclass of section due to representing the entire library as the hfma header with everything else as subsections
-    expected_signature = b"hfma"
+    # subclass of Section -- representing the entire library as the (outer) hfma header with everything else as subsections
     # the entire library does not bother maintain its "total_size" (the length of the entire file) because that also depends on the encryption/compression process, so that's handled in `save_library_bytes`
     # however, I do make sure the modified date is set
     offsets = {
         **Section.offsets,
         "date_modified": 100
     }
-    check_signature = False
+    check_signature = False # hfma signature is registered for the inner one
 
     @override
     def __init__(self, library: bytes | bytearray | Path | str = DEFAULT_LIBRARY_FILE):
