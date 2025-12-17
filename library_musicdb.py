@@ -118,63 +118,12 @@ class Section:
     allowed_subsections: set[bytes] = set()
     check_signature = True  # only disabled for Library which has hfma signature
 
-    @property
-    def signature(self):
-        if not self._signature:
-            # should never edit the signature
-            self._signature = self._data[self.offsets["signature"]:self.offsets["signature"] + 4]
-        return self._signature
-
-    @property
-    def size(self):
-        if self._changed_size:
-            self.set_int("size", len(self._data))
-            # do not change back to self._changed_size = False because supersections might not have seen tha the size changed yet!
-            # better to update the size multiple times redundantly than not to set it at all
-        return len(self._data)
-
-    @property
-    def size_from_data(self):
-        """ Use this one when loading! `size` will not be correct until this section is fully loaded! """
-        return self.get_int("size")
-
-    @property
-    def total_size(self):
-        """ Size of this section and all subsections, referred to as "associated sections length" on vollink """
-        if self.offsets["total_size"] >= 0 and any(s._changed_size for s in self):
-            total_size = sum(s.size for s in self)
-            self.set_int("total_size", total_size)
-            return total_size
-        else:
-            return sum(s.size for s in self)
-
-    @property
-    def total_size_from_data(self):
-        """ Use this one when loading! `total_size` will not be correct until this section and all subsections are loaded! """
-        if self.offsets["total_size"] < 0:
-            raise ValueError(f"{self.__class__.__name__} section doesn't have a stored total size")
-        return self.get_int("total_size")
-
-    @property
-    def subsection_count(self):
-        """ Referred to as "how many sections follow" on vollink """
-        if self.offsets["subsection_count"] >= 0 and self._subsection_count_changed:
-            self.set_int("subsection_count", len(self.subsections))
-            self._subsection_count_changed = False
-        return len(self.subsections)
-
-    @property
-    def subsection_count_from_data(self):
-        """ Use this one when loading! `subsection_count` will not be correct until this section and all subsections are loaded! """
-        if self.offsets["subsection_count"] < 0:
-            raise ValueError(f"{self.__class__.__name__} section doesn't have a stored subsection count")
-        return self.get_int("subsection_count")
-
     def __init__(self, data: BytesIO, check_signature=True):
         self._signature = None
 
         self._edited = False
         self._changed_size = False
+        self._updated_size_after_change = True
         self._subsection_count_changed = False
 
         start_offset = data.tell()
@@ -215,6 +164,59 @@ class Section:
         elif self.offsets["subsection_count"] > 0:
             for _ in range(0, self.subsection_count_from_data):
                 append_subsection()
+
+    @property
+    def signature(self):
+        if not self._signature:
+            # should never edit the signature
+            self._signature = self._data[self.offsets["signature"]:self.offsets["signature"] + 4]
+        return self._signature
+
+    @property
+    def size(self):
+        if not self._updated_size_after_change and self._changed_size:
+            self.set_int("size", len(self._data))
+            # do not change back to self._changed_size = False because supersections might not have seen tha the size changed yet!
+            # better to update the size multiple times redundantly than not to set it at all
+            self._updated_size_after_change = True
+        return len(self._data)
+
+    @property
+    def size_from_data(self):
+        """ Use this one when loading! `size` will not be correct until this section is fully loaded! """
+        return self.get_int("size")
+
+    @property
+    def total_size(self):
+        """ Size of this section and all subsections, referred to as "associated sections length" on vollink """
+        if self.offsets["total_size"] >= 0 and any(s._changed_size for s in self):
+            total_size = sum(s.size for s in self)
+            self.set_int("total_size", total_size)
+            return total_size
+        else:
+            return sum(s.size for s in self)
+
+    @property
+    def total_size_from_data(self):
+        """ Use this one when loading! `total_size` will not be correct until this section and all subsections are loaded! """
+        if self.offsets["total_size"] < 0:
+            raise ValueError(f"{self.__class__.__name__} section doesn't have a stored total size")
+        return self.get_int("total_size")
+
+    @property
+    def subsection_count(self):
+        """ Referred to as "how many sections follow" on vollink """
+        if self.offsets["subsection_count"] >= 0 and self._subsection_count_changed:
+            self.set_int("subsection_count", len(self.subsections))
+            self._subsection_count_changed = False
+        return len(self.subsections)
+
+    @property
+    def subsection_count_from_data(self):
+        """ Use this one when loading! `subsection_count` will not be correct until this section and all subsections are loaded! """
+        if self.offsets["subsection_count"] < 0:
+            raise ValueError(f"{self.__class__.__name__} section doesn't have a stored subsection count")
+        return self.get_int("subsection_count")
 
     def _edit(self):
         self._edited = True
