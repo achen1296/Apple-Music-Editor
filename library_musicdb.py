@@ -248,14 +248,32 @@ class Section:
         return self._data
 
     def __iter__(self) -> Iterator["Section"]:
-        """ Yield this section and all subsections (and subsubsections, etc.) in the order they would appear in the file """
+        """ Yield this section and all subsections (and subsubsections, etc., recursively) in the order they would appear in the file. To iterate over only direct subsections, just use `for subsection in section.subsections`. """
         yield self
         for s in self.subsections:
             yield from s
 
     def __str__(self):
         if self.subsections:
-            return f"{self.__class__.__name__} [{", ".join(str(s) for s in self.subsections)}]"
+            # compact together repetitions
+            s = f"{self.__class__.__name__} ["
+            representative = str(self.subsections[0])
+            count = 1
+            for subsection in self.subsections[1:]:
+                next_str = str(subsection)
+                if next_str == representative:
+                    count += 1
+                else:
+                    s += representative
+                    if count > 1:
+                        s += f" * {count}"
+                    s += ", "
+                    representative = next_str
+            s += representative
+            if count > 1:
+                s += f" * {count}"
+            s += "]"
+            return s
         else:
             return f"{self.__class__.__name__}"
 
