@@ -163,6 +163,8 @@ class Section:
                     Section(data, check_signature=False)  # use a generic section just to have something for limited forward compatibility with unknown future section types
                 )
 
+        self.parent = self # won't be reassigned if this is the top-level Section
+
         if self.offsets["total_size"] > 0:
             # total size is preferred if both are available because it has a better chance of being able to proceed for unknown sections
             total_size = self.total_size_from_data
@@ -172,6 +174,9 @@ class Section:
         elif self.offsets["subsection_count"] > 0:
             for _ in range(0, self.subsection_count_from_data):
                 append_subsection(error_on_unexpected=True)
+
+        for s in self.subsections:
+            s.parent = self
 
     @property
     def signature(self):
