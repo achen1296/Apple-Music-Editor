@@ -166,7 +166,7 @@ class LibrarySearcher:
     def track_title(self, title: str | re.Pattern, *, re=False, **kwargs):
         self.descendants_of_type(itma)
         self.subsections_of_type(boma)
-        self.match_boma_subtype(boma.boma_subtypes["track_title"])
+        self.match_boma_subtype(boma.subtypes["track_title"])
         if re:
             self.re_match_boma_str(title, **kwargs)
         else:
@@ -181,7 +181,7 @@ if __name__ == "__main__":
         .track_title(input("track title: "))
         .parents()
         .children_of_type(boma)
-        .match_boma_subtype(boma.boma_subtypes["track_plays_and_skips"])
+        .match_boma_subtype(boma.subtypes["track_plays_and_skips"])
     )
     for s in ls.search(l):
         print(s)

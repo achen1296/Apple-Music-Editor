@@ -1,4 +1,5 @@
 import os
+from re import M
 import zlib
 from datetime import datetime, timezone
 from enum import Enum
@@ -416,8 +417,26 @@ class itma(Section):
     offsets = {
         **Section.offsets,
         "subsection_count": 12,
+        # todo many of these fields are not 4 bytes
+        "love_or_dislike": 62,
+        "stars": 65,
+        "movements_in_work": 86,
+        "movements_of_work": 88,
+        "track_number": 160,
+        "track_year": 167,
     }
     expected_subsections = {b"boma"}
+
+    LOVE = 2
+    DISLIKE = 3
+    NOT_LOVE_OR_DISLIKE = 0
+
+    STARS_0 = 0
+    STARS_1 = 20
+    STARS_2 = 40
+    STARS_3 = 60
+    STARS_4 = 80
+    STARS_5 = 100
 
 
 register_section_class(itma)
@@ -427,6 +446,9 @@ class lPma(Section):
     offsets = {
         **Section.offsets,
         "subsection_count": 8,
+        "playlist_length": 16,
+        "date_created": 22,
+        "date_modified": 138,
     }
     expected_subsections = {b"lpma"}
 
@@ -452,10 +474,101 @@ class boma(Section):
         "size": 8,  # only this section type has the size in a different place
         "boma_subtype": 12,
     }
-    boma_subtypes = {
-        "track_plays_and_skips": 0x17,
+    subtypes = {
+        "track_numerics": 0x1,
         "track_title": 0x2,
+        "track_album": 0x3,
+        "track_artist": 0x4,
+        "genre": 0x5,
+        "kind": 0x6,
+        # "not sure" on vollink: 0x7,
+        "comment": 0x8,
+        "composer": 0xc,
+        "grouping": 0xe,
+        "episode_comment": 0x12,
+        "episode_synopsis": 0x16,
+        "track_plays_skips": 0x17,
+        "series_title": 0x18,
+        "episode_number": 0x19,
+        "track_album_artist": 0x1b,
+        "series": 0x1c,
+        # "xml block (unknown utility)": 0x1d,
+        "track_title_sort": 0x1e,
+        "track_album_sort": 0x1f,
+        "track_artist_sort": 0x20,
+        "track_album_artist_sort": 0x21,
+        "composer_sort": 0x22,
+        "video": 0x24,
+        "copyright_holder": 0x2b,
+        # another "not sure" : 0x2e,
+        "series_synopsis": 0x33,
+        "flavor_string": 0x34,
+        # "xml block (unknown utility)": 0x36,
+        # "xml block (unknown utility)": 0x38,
+        "purchaser_email": 0x3b,
+        "purchaser_name": 0x3c,
+        "work_name": 0x3f,
+        "movement_name": 0x40,
+        # listed as "book" type on vollink but not present in my library: 0x42,
+        "playlist_name": 0xc8,
+        # "unknown", "found under lpma": 0xc9,
+        # "unknown", "found under lpma": 0xca,
+        # "xml block (unknown utility)": 0xcd,
+        "ipfa": 0xce,
+        "album_name": 0x12c,
+        "album_artist": 0x12d,
+        "album_artist": 0x12e, # duplicate name on vollink?
+        "series_title": 0x12f,
+        "xml_artwork_url": 0x192,
+        # another "unknown 64x4b hex string": 0x1e4,
+        # "unknown 64x4b hex string": 0x1f4,
+        # "unknown", "found under plma": 0x1f6,
+        "managed_media_folder": 0x1f8,
+        # listed as "book" type on vollink but not this type in my library: 0x1fc,
+        # listed as "book" type on vollink but not this type in my library: 01fd,
+        # listed as "book" type on vollink but not this type in my library: 0x200,
+        # "xml block (unknown utility)": 0x2bc,
+        # "xml block (unknown utility)": 0x3cc,
     }
+    subtypes_additional_offsets = {
+        "track_numerics": {
+            "bit_rate": 108,
+            "date_added": 112,
+            "date_modified": 148,
+            "normalization": 152,
+            "song_duration": 176,
+            "file size": 316,
+        },
+        "track_plays_skips": {
+            "last_played": 28,
+            "plays": 32,
+            "last_skipped": 48,
+            "skips": 52
+        },
+        "video": {
+            "height": 20,
+            "width": 24,
+            "framerate": 64,
+        },
+        "ipfa": {
+            # todo
+        }
+    }
+    string_subtypes = {
+        k
+        for k in subtypes
+        if k not in subtypes_additional_offsets
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.subtype = self.get_int("boma_subtype")
+        for name, st in boma.subtypes.items():
+            if self.subtype == st:
+                self.offsets = {
+                    **boma.offsets,
+                    **boma.subtypes_additional_offsets[name],
+                }
 
     def get_string(self):
         """ See `set_string` """
@@ -505,7 +618,11 @@ class Library(Section):
     # however, I do make sure the modified date is set
     offsets = {
         **Section.offsets,
-        "date_modified": 100
+        "song_count": 68,
+        "playlist_count": 72,
+        "album_count": 76,
+        "artist_count": 80,
+        "date_modified": 100,
     }
     check_signature = False  # hfma signature is registered for the inner one
 
