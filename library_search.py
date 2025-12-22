@@ -16,9 +16,6 @@ class LibrarySearcher:
             ]
         ] = []
 
-        self.children = self.subsections
-        self.children_of_type = self.subsection_of_type
-
     def custom_predicate(self, predicate: Callable[[Section], bool]):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
@@ -27,6 +24,14 @@ class LibrarySearcher:
 
         self.search_actions.append(f)
         return self
+
+    def search(self, *sections: Section):
+        sections: Iterable[Section]
+        for f in self.search_actions:
+            sections = f(sections)
+        return sections
+
+    # positional
 
     def subsections(self):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
@@ -37,7 +42,9 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def subsection_of_type(self, type: Type[Section]):
+    children = subsections
+
+    def subsections_of_type(self, type: Type[Section]):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
                 for sub in s.subsections:
@@ -46,6 +53,8 @@ class LibrarySearcher:
 
         self.search_actions.append(f)
         return self
+
+    children_of_type = subsections_of_type
 
     def descendants(self):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
@@ -90,6 +99,8 @@ class LibrarySearcher:
 
         self.search_actions.append(f)
         return self
+
+    # generic content
 
     def match_bytes(self, offset: str | int, value: bytes):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
@@ -136,19 +147,15 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def search(self, *sections: Section):
-        sections: Iterable[Section]
-        for f in self.search_actions:
-            sections = f(sections)
-        return sections
+    # specific to known types
 
 
 if __name__ == "__main__":
     l = Library()
     ls = (
         LibrarySearcher()
-        .subsection_of_type(hsma)
-        .subsection_of_type(plma)
+        .subsections_of_type(hsma)
+        .subsections_of_type(plma)
         .parents()
     )
     print(list(ls.search(l)))
