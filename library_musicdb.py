@@ -116,7 +116,7 @@ class Section:
         "subsection_count": -1,
         "date_modified": -1,
     }
-    allowed_subsections: set[bytes] = set()
+    expected_subsections: set[bytes] = set()
     check_signature = True  # only disabled for Library which has hfma signature
 
     def __init__(self, data: BytesIO, check_signature=True):
@@ -140,31 +140,38 @@ class Section:
         # read subsections -- only if there is either a total size or a subsection count in the data (sometimes both are present, doesn't matter which is used in that case for a valid file)
         self.subsections: list["Section"] = []
 
-        def append_subsection():
+        def append_subsection(error_on_unexpected:bool):
             signature = data.read(4)
             data.seek(-4, SEEK_CUR)
 
             if signature in SECTION_CLASSES:
-                if signature in self.allowed_subsections:
+                if signature in self.expected_subsections:
                     self.subsections.append(
                         SECTION_CLASSES[signature](data)
                     )
                 else:
-                    raise ValueError(f"unexpected subsection signature {signature} for subsection of {self.__class__.__name__}")
+                    if error_on_unexpected:
+                        raise ValueError(f"known signature {signature} but not expected as a subsection of {self.__class__.__name__} and using a subsection count, don't know how to proceed")
+                    else:
+                        print(f"warning: known signature {signature} but not expected as a subsection of {self.__class__.__name__}, but can proceed using total size")
             else:
-                print(f"warning: unknown signature {signature}, loading it with the `Section` base class")
+                if error_on_unexpected:
+                    raise ValueError(f"unknown signature {signature} and using a subsection count, don't know how to proceed")
+                else:
+                    print(f"warning: unknown signature {signature}, loading it with the `Section` base class, but can proceed using total size")
                 self.subsections.append(
                     Section(data, check_signature=False)  # use a generic section just to have something for limited forward compatibility with unknown future section types
                 )
 
         if self.offsets["total_size"] > 0:
+            # total size is preferred if both are available because it has a better chance of being able to proceed for unknown sections
             total_size = self.total_size_from_data
             while data.tell() < start_offset + total_size:
-                append_subsection()
+                append_subsection(error_on_unexpected=False)
             assert data.tell() == start_offset + total_size
         elif self.offsets["subsection_count"] > 0:
             for _ in range(0, self.subsection_count_from_data):
-                append_subsection()
+                append_subsection(error_on_unexpected=True)
 
     @property
     def signature(self):
@@ -297,7 +304,7 @@ class hsma(Section):
         **Section.offsets,
         "total_size": 8,
     }
-    allowed_subsections = {
+    expected_subsections = {
         b"hfma",
         b"plma",
         b"lama",
@@ -325,7 +332,7 @@ class plma(Section):
         **Section.offsets,
         "subsection_count": 8,
     }
-    allowed_subsections = {b"boma"}
+    expected_subsections = {b"boma"}
 
 
 register_section_class(plma)
@@ -336,7 +343,7 @@ class lama(Section):
         **Section.offsets,
         "subsection_count": 8,
     }
-    allowed_subsections = {b"iama"}
+    expected_subsections = {b"iama"}
 
 
 register_section_class(lama)
@@ -348,7 +355,7 @@ class iama(Section):
         "total_size": 8,
         "subsection_count": 12,
     }
-    allowed_subsections = {b"boma"}
+    expected_subsections = {b"boma"}
 
 
 register_section_class(iama)
@@ -359,7 +366,7 @@ class lAma(Section):
         **Section.offsets,
         "subsection_count": 8,
     }
-    allowed_subsections = {b"iAma"}
+    expected_subsections = {b"iAma"}
 
 
 register_section_class(lAma)
@@ -371,7 +378,7 @@ class iAma(Section):
         "total_size": 8,
         "subsection_count": 12,
     }
-    allowed_subsections = {b"boma"}
+    expected_subsections = {b"boma"}
 
 
 register_section_class(iAma)
@@ -382,7 +389,7 @@ class ltma(Section):
         **Section.offsets,
         "subsection_count": 8,
     }
-    allowed_subsections = {b"itma"}
+    expected_subsections = {b"itma"}
 
 
 register_section_class(ltma)
@@ -393,7 +400,7 @@ class itma(Section):
         **Section.offsets,
         "subsection_count": 12,
     }
-    allowed_subsections = {b"boma"}
+    expected_subsections = {b"boma"}
 
 
 register_section_class(itma)
@@ -404,7 +411,7 @@ class lPma(Section):
         **Section.offsets,
         "subsection_count": 8,
     }
-    allowed_subsections = {b"lpma"}
+    expected_subsections = {b"lpma"}
 
 
 register_section_class(lPma)
@@ -416,7 +423,7 @@ class lpma(Section):
         "total_size": 8,
         "subsection_count": 12,
     }
-    allowed_subsections = {b"boma"}
+    expected_subsections = {b"boma"}
 
 
 register_section_class(lpma)
