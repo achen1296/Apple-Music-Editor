@@ -18,6 +18,15 @@ class LibrarySearcher:
         self.children = self.subsections
         self.children_of_type = self.subsection_of_type
 
+    def custom_predicate(self, predicate: Callable[[Section], bool]):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if predicate(s):
+                    yield s
+
+        self.search_actions.append(f)
+        return self
+
     def subsections(self):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
