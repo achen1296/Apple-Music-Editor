@@ -47,6 +47,25 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
+    def descendants(self):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                for sub in s:
+                    yield sub
+
+        self.search_actions.append(f)
+        return self
+
+    def descendants_of_type(self, type: Type[Section]):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                for sub in s:
+                    if isinstance(sub, type):
+                        yield sub
+
+        self.search_actions.append(f)
+        return self
+
     def parents(self):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             seen_parents: set[Section] = set()  # unlike children, can reach the same Section multiple ways
