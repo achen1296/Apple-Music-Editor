@@ -452,6 +452,9 @@ class boma(Section):
         "size": 8,  # only this section type has the size in a different place
         "boma_subtype": 12,
     }
+    boma_subtypes = {
+        "track_title": 0x2,
+    }
 
     def get_string(self):
         """ See `set_string` """

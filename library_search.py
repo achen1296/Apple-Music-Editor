@@ -1,7 +1,7 @@
 import re
 from typing import Callable, Iterable, Type
 
-from library_musicdb import Library, Section, boma, hsma, plma
+from library_musicdb import *
 
 
 class LibrarySearcher:
@@ -31,7 +31,16 @@ class LibrarySearcher:
             sections = f(sections)
         return sections
 
-    # positional
+    # type and positional
+
+    def of_type[T: Section](self, type: Type[T]):
+        def f(sections: Iterable[Section]) -> Iterable[T]:
+            for s in sections:
+                if isinstance(s, type):
+                    yield s
+
+        self.search_actions.append(f)
+        return self
 
     def subsections(self):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
@@ -44,8 +53,8 @@ class LibrarySearcher:
 
     children = subsections
 
-    def subsections_of_type(self, type: Type[Section]):
-        def f(sections: Iterable[Section]) -> Iterable[Section]:
+    def subsections_of_type[T: Section](self, type: Type[T]):
+        def f(sections: Iterable[Section]) -> Iterable[T]:
             for s in sections:
                 for sub in s.subsections:
                     if isinstance(sub, type):
@@ -65,8 +74,8 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def descendants_of_type(self, type: Type[Section]):
-        def f(sections: Iterable[Section]) -> Iterable[Section]:
+    def descendants_of_type[T: Section](self, type: Type[T]):
+        def f(sections: Iterable[Section]) -> Iterable[T]:
             for s in sections:
                 for sub in s:
                     if isinstance(sub, type):
@@ -87,8 +96,8 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def parents_of_type(self, type: Type[Section]):
-        def f(sections: Iterable[Section]) -> Iterable[Section]:
+    def parents_of_type[T: Section](self, type: Type[T]):
+        def f(sections: Iterable[Section]) -> Iterable[T]:
             seen_parents: set[Section] = set()
 
             for s in sections:
@@ -147,15 +156,36 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    # specific to known types
+    # shortcuts for data specific to known types
+
+    def match_boma_subtype(self, boma_subtype: int):
+        self.of_type(boma)
+        self.match_int("boma_subtype", boma_subtype)
+        return self
+
+    def track_title(self, title: str | re.Pattern, *, re=False, **kwargs):
+        self.descendants_of_type(itma)
+        self.subsections_of_type(boma)
+        self.match_boma_subtype(boma.boma_subtypes["track_title"])
+        if re:
+            self.re_match_boma_str(title, **kwargs)
+        else:
+            self.match_boma_str(title, **kwargs)
+        self.parents()
+        return self
 
 
 if __name__ == "__main__":
     l = Library()
     ls = (
         LibrarySearcher()
-        .subsections_of_type(hsma)
-        .subsections_of_type(plma)
-        .parents()
+        .track_title(input())
     )
-    print(list(ls.search(l)))
+    for s1 in ls.search(l):
+        print(s1)
+        for s2 in s1.subsections:
+            print(s2)
+            try:
+                print(s2.get_string())
+            except UnicodeDecodeError:
+                pass
