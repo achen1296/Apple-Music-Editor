@@ -171,7 +171,6 @@ class LibrarySearcher:
             self.re_match_boma_str(title, **kwargs)
         else:
             self.match_boma_str(title, **kwargs)
-        self.parents()
         return self
 
 
@@ -179,13 +178,12 @@ if __name__ == "__main__":
     l = Library()
     ls = (
         LibrarySearcher()
-        .track_title(input())
+        .track_title(input("track title: "))
+        .parents()
+        .children_of_type(boma)
+        .match_boma_subtype(boma.boma_subtypes["track_plays_and_skips"])
     )
-    for s1 in ls.search(l):
-        print(s1)
-        for s2 in s1.subsections:
-            print(s2)
-            try:
-                print(s2.get_string())
-            except UnicodeDecodeError:
-                pass
+    for s in ls.search(l):
+        print(s)
+        s.set_int(32, int(input("play count: ")))
+    l.save()

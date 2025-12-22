@@ -453,6 +453,7 @@ class boma(Section):
         "boma_subtype": 12,
     }
     boma_subtypes = {
+        "track_plays_and_skips": 0x17,
         "track_title": 0x2,
     }
 
