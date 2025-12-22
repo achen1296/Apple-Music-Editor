@@ -1,3 +1,4 @@
+import re
 from typing import Callable, Iterable, Type
 
 from library_musicdb import Library, Section, boma, hsma, plma
@@ -67,6 +68,51 @@ class LibrarySearcher:
                     if isinstance(s.parent, type):
                         yield s.parent
                     seen_parents.add(s.parent)
+
+        self.search_actions.append(f)
+        return self
+
+    def match_bytes(self, offset: str | int, value: bytes):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if s.get_bytes(offset, len(value)) == value:
+                    yield s
+
+        self.search_actions.append(f)
+        return
+
+    def match_int(self, offset: str | int, value: int):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if s.get_int(offset) == value:
+                    yield s
+
+        self.search_actions.append(f)
+        return
+
+    def match_boma_str(self, pattern: str, *, case_sensitive=False):
+        if not case_sensitive:
+            pattern = pattern.lower()
+
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if isinstance(s, boma):
+                    string = s.get_string()
+                    if not case_sensitive:
+                        string = string.lower()
+                    if pattern in string:
+                        yield s
+
+        self.search_actions.append(f)
+        return self
+
+    def re_match_boma_str(self, pattern: str | re.Pattern, *, re_flags=re.I):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if isinstance(s, boma):
+                    string = s.get_string()
+                    if re.search(pattern, string, re_flags):
+                        yield s
 
         self.search_actions.append(f)
         return self

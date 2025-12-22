@@ -140,7 +140,7 @@ class Section:
         # read subsections -- only if there is either a total size or a subsection count in the data (sometimes both are present, doesn't matter which is used in that case for a valid file)
         self.subsections: list["Section"] = []
 
-        def append_subsection(error_on_unexpected:bool):
+        def append_subsection(error_on_unexpected: bool):
             signature = data.read(4)
             data.seek(-4, SEEK_CUR)
 
@@ -163,7 +163,7 @@ class Section:
                     Section(data, check_signature=False)  # use a generic section just to have something for limited forward compatibility with unknown future section types
                 )
 
-        self.parent = self # won't be reassigned if this is the top-level Section
+        self.parent = self  # won't be reassigned if this is the top-level Section
 
         if self.offsets["total_size"] > 0:
             # total size is preferred if both are available because it has a better chance of being able to proceed for unknown sections
@@ -291,6 +291,18 @@ class Section:
 
     def __repr__(self):
         return self.__str__()
+
+    def set_bytes(self, offset: int | str, value: bytes):
+        self._edit()
+        if isinstance(offset, str):
+            offset = self.offsets[offset]
+        l = len(value)
+        self._data[offset:offset+l] = value
+
+    def get_bytes(self, offset: int | str, length: int):
+        if isinstance(offset, str):
+            offset = self.offsets[offset]
+        return self._data[offset:offset + length]
 
     def set_int(self, offset: int | str, value: int):
         self._edit()
@@ -451,7 +463,6 @@ class boma(Section):
         else:
             return self._data[20:].decode("utf_8")
 
-
     def set_string(self, value: str):
         """ Checks offset 20 to see if it's 1 or 2 to determine the string format -- but if it's not either of these, defaults to writing UTF-8 at offset 20 instead! Other than that, this function does not know (this cannot be 100% reliably figured out from the data itself) if the data is supposed to be a string at all, so the caller should know that in advance (from the subtype number) or risk corruption. See readme/vollink.
 
@@ -492,7 +503,7 @@ class Library(Section):
         **Section.offsets,
         "date_modified": 100
     }
-    check_signature = False # hfma signature is registered for the inner one
+    check_signature = False  # hfma signature is registered for the inner one
 
     @override
     def __init__(self, library: bytes | bytearray | Path | str = DEFAULT_LIBRARY_FILE):
