@@ -208,9 +208,9 @@ class LibrarySearcher:
     def track_title(self, title: str | re.Pattern, *, re=False, **kwargs):
         self.descendants_of_type(itma)
         if re:
-            self.re_match_data_subsection_string("track_title", title, **kwargs)
+            self.re_match_data_subsection_string("title", title, **kwargs)
         else:
-            self.match_data_subsection_string("track_title", title, **kwargs)
+            self.match_data_subsection_string("title", title, **kwargs)
         return self
 
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     ls = (
         LibrarySearcher()
         .track_title(input("track title: "))
-        .data_subsections_of_subtype("track_plays_skips")
+        .data_subsections_of_subtype("plays_skips")
     )
     for s in ls.search(l):
         print(s.parent)

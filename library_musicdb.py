@@ -522,9 +522,9 @@ class iama(DataContainerSection):
     }
 
     data_subtypes = {
-        "album_name": 0x12c,
-        "album_artist": 0x12d,
-        "album_artist": 0x12e,  # duplicate name on vollink?
+        "name": 0x12c,
+        "artist": 0x12d,
+        "artist": 0x12e,  # duplicate name on vollink?
     }
 
 
@@ -584,14 +584,14 @@ class itma(DataContainerSection):
         "movements_in_work": 86,
         "movements_of_work": 88,
         "track_number": 160,
-        "track_year": 167,
+        "year": 167,
     }
 
     data_subtypes = {
         "track_numerics": 0x1,
-        "track_title": 0x2,
-        "track_album": 0x3,
-        "track_artist": 0x4,
+        "title": 0x2,
+        "album": 0x3,
+        "artist": 0x4,
         "genre": 0x5,
         "kind": 0x6,
         # "not sure" on vollink: 0x7,
@@ -601,16 +601,16 @@ class itma(DataContainerSection):
         "grouping": 0xe,
         "episode_comment": 0x12,
         "episode_synopsis": 0x16,
-        "track_plays_skips": 0x17,
+        "plays_skips": 0x17,
         "series_title": 0x18,
         "episode_number": 0x19,
         "track_album_artist": 0x1b,
         "series": 0x1c,
         # "xml block (unknown utility)": 0x1d,
-        "track_title_sort": 0x1e,
-        "track_album_sort": 0x1f,
-        "track_artist_sort": 0x20,
-        "track_album_artist_sort": 0x21,
+        "title_sort": 0x1e,
+        "album_sort": 0x1f,
+        "artist_sort": 0x20,
+        "album_artist_sort": 0x21,
         "composer_sort": 0x22,
         "video": 0x24,
         "copyright_holder": 0x2b,
