@@ -267,28 +267,7 @@ class Section:
             yield from s
 
     def __str__(self):
-        if self.subsections:
-            # compact together repetitions
-            s = f"{self.__class__.__name__} ["
-            representative = str(self.subsections[0])
-            count = 1
-            for subsection in self.subsections[1:]:
-                next_str = str(subsection)
-                if next_str == representative:
-                    count += 1
-                else:
-                    s += representative
-                    if count > 1:
-                        s += f" * {count}"
-                    s += ", "
-                    representative = next_str
-            s += representative
-            if count > 1:
-                s += f" * {count}"
-            s += "]"
-            return s
-        else:
-            return f"{self.__class__.__name__}"
+        return f"{self.__class__.__name__}"
 
     def __repr__(self):
         return self.__str__()
@@ -378,9 +357,9 @@ Data = boma
 
 
 class DataContainerSection(Section):
+    """ Add methods for boma subsections """
     expected_subsections = {b"boma"}
 
-    """ Add methods for boma subsections """
     data_subtypes: dict[str, int] = {}
     """ Subtype name -> subtype number """
     numeric_data_offsets: dict[int, dict[str, int]] = {}
@@ -436,20 +415,23 @@ class DataContainerSection(Section):
                     for subtype_name, subtype_number in self.data_subtypes.items():
                         if subtype_number == subsection.subtype:
                             if subtype_number in self.numeric_data_offsets:
-                                yield f"{subtype_name}: numerics {{{", ".join(
-                                    f"{offset_name}: {subsection.get_int(offset)}"
+                                yield f"\"{subtype_name}\": {{{", ".join(
+                                    f"\"{offset_name}\": {subsection.get_int(offset)}"
                                     for offset_name, offset in self.numeric_data_offsets[subtype_number].items()
                                 )}}}"
                             else:
-                                yield f"{subtype_name}: \"{subsection.get_string()}\""
+                                yield f"\"{subtype_name}\": \"{subsection.get_string()}\""
                 else:
                     yield subsection.__class__.__name__
 
         return (
-            f"{self.__class__.__name__} ["
+            f"{self.__class__.__name__} {{"
             + ", ".join(f())
-            + "]"
+            + "}"
         )
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class hsma(Section):
