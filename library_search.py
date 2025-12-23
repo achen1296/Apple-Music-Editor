@@ -129,13 +129,13 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return
 
-    def match_boma_str(self, pattern: str, *, case_sensitive=False):
+    def match_str(self, pattern: str, *, case_sensitive=False):
         if not case_sensitive:
             pattern = pattern.lower()
 
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, boma):
+                if isinstance(s, Data):
                     string = s.get_string()
                     if not case_sensitive:
                         string = string.lower()
@@ -145,10 +145,10 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def re_match_boma_str(self, pattern: str | re.Pattern, *, re_flags=re.I):
+    def re_match_str(self, pattern: str | re.Pattern, *, re_flags=re.I):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, boma):
+                if isinstance(s, Data):
                     string = s.get_string()
                     if re.search(pattern, string, re_flags):
                         yield s
@@ -158,19 +158,19 @@ class LibrarySearcher:
 
     # shortcuts for data specific to known types
 
-    def match_boma_subtype(self, boma_subtype: int):
-        self.of_type(boma)
-        self.match_int("boma_subtype", boma_subtype)
+    def match_data_subtype(self, subtype: int):
+        self.of_type(Data)
+        self.match_int("subtype", subtype)
         return self
 
     def track_title(self, title: str | re.Pattern, *, re=False, **kwargs):
         self.descendants_of_type(itma)
-        self.subsections_of_type(boma)
-        self.match_boma_subtype(boma.subtypes["track_title"])
+        self.subsections_of_type(Data)
+        self.match_data_subtype(Data.subtypes["track_title"])
         if re:
-            self.re_match_boma_str(title, **kwargs)
+            self.re_match_str(title, **kwargs)
         else:
-            self.match_boma_str(title, **kwargs)
+            self.match_str(title, **kwargs)
         return self
 
 
@@ -180,8 +180,8 @@ if __name__ == "__main__":
         LibrarySearcher()
         .track_title(input("track title: "))
         .parents()
-        .children_of_type(boma)
-        .match_boma_subtype(boma.subtypes["track_plays_and_skips"])
+        .children_of_type(Data)
+        .match_data_subtype(Data.subtypes["track_plays_and_skips"])
     )
     for s in ls.search(l):
         print(s)

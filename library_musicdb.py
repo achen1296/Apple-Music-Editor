@@ -1,10 +1,10 @@
 import os
-from re import M
 import zlib
 from datetime import datetime, timezone
 from enum import Enum
 from io import SEEK_CUR, BytesIO
 from pathlib import Path
+from re import M
 from typing import Callable, Iterable, Iterator, Type, override
 
 from Crypto.Cipher import AES
@@ -334,6 +334,7 @@ class hsma(Section):
 
 
 register_section_class(hsma)
+Boundary = hsma
 
 
 class hfma(Section):  # inner hfma only, not outer hfma which is Library
@@ -343,6 +344,7 @@ class hfma(Section):  # inner hfma only, not outer hfma which is Library
 
 
 register_section_class(hfma)
+Envelope = hfma
 
 
 class plma(Section):
@@ -354,6 +356,7 @@ class plma(Section):
 
 
 register_section_class(plma)
+LibraryMaster = plma
 
 
 class lama(Section):
@@ -365,6 +368,7 @@ class lama(Section):
 
 
 register_section_class(lama)
+AlbumList = lama
 
 
 class iama(Section):
@@ -377,6 +381,7 @@ class iama(Section):
 
 
 register_section_class(iama)
+Album = iama
 
 
 class lAma(Section):
@@ -388,6 +393,7 @@ class lAma(Section):
 
 
 register_section_class(lAma)
+AristList = lAma
 
 
 class iAma(Section):
@@ -400,6 +406,7 @@ class iAma(Section):
 
 
 register_section_class(iAma)
+Artist = iAma
 
 
 class ltma(Section):
@@ -411,6 +418,7 @@ class ltma(Section):
 
 
 register_section_class(ltma)
+TrackList = ltma
 
 
 class itma(Section):
@@ -440,6 +448,7 @@ class itma(Section):
 
 
 register_section_class(itma)
+Track = itma
 
 
 class lPma(Section):
@@ -454,6 +463,7 @@ class lPma(Section):
 
 
 register_section_class(lPma)
+PlaylistList = lPma
 
 
 class lpma(Section):
@@ -466,13 +476,14 @@ class lpma(Section):
 
 
 register_section_class(lpma)
+Playlist = lpma
 
 
 class boma(Section):
     offsets = {
         **Section.offsets,
         "size": 8,  # only this section type has the size in a different place
-        "boma_subtype": 12,
+        "subtype": 12,
     }
     subtypes = {
         "track_numerics": 0x1,
@@ -517,7 +528,7 @@ class boma(Section):
         "ipfa": 0xce,
         "album_name": 0x12c,
         "album_artist": 0x12d,
-        "album_artist": 0x12e, # duplicate name on vollink?
+        "album_artist": 0x12e,  # duplicate name on vollink?
         "series_title": 0x12f,
         "xml_artwork_url": 0x192,
         # another "unknown 64x4b hex string": 0x1e4,
@@ -562,7 +573,7 @@ class boma(Section):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subtype = self.get_int("boma_subtype")
+        self.subtype = self.get_int("subtype")
         for name, st in boma.subtypes.items():
             if self.subtype == st:
                 self.offsets = {
@@ -600,6 +611,7 @@ class boma(Section):
 
 
 register_section_class(boma)
+Data = boma
 
 
 # see readme
