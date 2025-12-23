@@ -8,7 +8,7 @@ def expect_one_of[T](actual: T, expected_patterns: list[T | None], message: str)
     raise ValueError(f"{message} (expected: {expected_patterns}, actual: {actual})")
 
 
-def unpack_one(fmt: str, b: bytes, offset: int):
+def unpack(fmt: str, b: bytes, offset: int):
     # copied from https://github.com/jsharkey13/musicdb-to-json
     # changes:
     # - used unpack_from instead
@@ -18,16 +18,28 @@ def unpack_one(fmt: str, b: bytes, offset: int):
     return struct.unpack_from(fmt, b, offset)[0]
 
 
-def unpack_int(b: bytes, offset: int) -> int:
-    return unpack_one("<I", b, offset)
+def pack_into(fmt: str, b: bytes, offset: int, value: int):
+    struct.pack_into(fmt, b, offset, value)
 
 
-def pack_int_into(b: bytearray, offset: int, value: int):
-    struct.pack_into("<I", b, offset, value)
+int_size_formats = {
+    1: "<B",
+    2: "<H",
+    4: "<I",
+    8: "<Q",
+}
 
 
-def pack_int(value: int):
-    return struct.pack("<I", value)
+def unpack_int(b: bytes, offset: int, *, size: int = 4) -> int:
+    return unpack(int_size_formats[size], b, offset)
+
+
+def pack_int_into(b: bytearray, offset: int, value: int, *, size: int = 4):
+    struct.pack_into(int_size_formats[size], b, offset, value)
+
+
+def pack_int(value: int, *, size: int = 4):
+    return struct.pack(int_size_formats[size], value)
 
 
 def show_control_chars(s: str):

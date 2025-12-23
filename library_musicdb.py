@@ -1,3 +1,4 @@
+from collections import defaultdict
 import os
 import zlib
 from datetime import datetime, timezone
@@ -108,6 +109,18 @@ def register_section_class(cls: Type["Section"]):
     SECTION_CLASSES[bytes(cls.__name__, "ascii")] = cls
 
 
+def datetime_to_int(d: datetime | None = None):
+    # +2082844800 to convert Unix epoch (Jan 1 1970) to Mac epoch (Jan 1 1904)
+    if d is None:
+        d = datetime.now(timezone.utc)
+    return int(d.timestamp()) + 2082844800
+
+
+def int_to_datetime(i: int):
+    i -= 2082844800
+    return datetime.fromtimestamp(i, timezone.utc)
+
+
 class Section:
     offsets: dict[str, int] = {
         "signature": 0,
@@ -117,6 +130,8 @@ class Section:
         "subsection_count": -1,
         "date_modified": -1,
     }
+    offset_int_sizes: defaultdict[str, int] = defaultdict(lambda: 4)
+    """ Assume size 4 bytes if not specified (since that is the most common) """
     expected_subsections: set[bytes] = set()
     check_signature = True  # only disabled for Library which has hfma signature
 
@@ -131,8 +146,8 @@ class Section:
         start_offset = data.tell()
 
         # read this section
-        self._data = bytearray(data.read(self.offsets["size"] + 4))
-        self._data += data.read(self.size_from_data - (self.offsets["size"] + 4))
+        self._data = bytearray(data.read(self.offsets["size"] + self.offset_int_sizes["size"]))
+        self._data += data.read(self.size_from_data - (self.offsets["size"] + self.offset_int_sizes["size"]))
         assert self.size == self.size_from_data  # make sure read() did not stop short
 
         if self.check_signature and check_signature:  # can be turned off either at class level or by caller
@@ -183,7 +198,7 @@ class Section:
     def signature(self):
         if not self._signature:
             # should never edit the signature
-            self._signature = self._data[self.offsets["signature"]:self.offsets["signature"] + 4]
+            self._signature = self._data[self.offsets["signature"]:self.offsets["signature"] + self.offset_int_sizes["signature"]]
         return self._signature
 
     @property
@@ -249,8 +264,7 @@ class Section:
         # this makes sure everything is updated when we go to write
 
         if self.offsets["date_modified"] >= 0 and any(s._edited for s in self):
-            # +2082844800 to convert Unix epoch (Jan 1 1970) to Mac epoch (Jan 1 1904)
-            self.set_int("date_modified", int(datetime.now(tz=timezone.utc).timestamp()) + 2082844800)
+            self.set_int("date_modified", datetime_to_int())
             # do not change back to self._edited = False because supersections might not have seen yet
 
         # run the logic to update these in their property methods
@@ -266,8 +280,15 @@ class Section:
         for s in self.subsections:
             yield from s
 
+    def as_dict(self) -> dict:
+        return {
+            offset_name: self.get_int(offset_name)
+            for offset_name in self.offsets
+            if self.offsets[offset_name] >= 0
+        }
+
     def __str__(self):
-        return f"{self.__class__.__name__}"
+        return f"<{self.__class__.__name__} {self.as_dict()}>"
 
     def __repr__(self):
         return self.__str__()
@@ -284,16 +305,22 @@ class Section:
             offset = self.offsets[offset]
         return self._data[offset:offset + length]
 
-    def set_int(self, offset: int | str, value: int):
+    def set_int(self, key: str | tuple[int, int], value: int):
         self._edit()
-        if isinstance(offset, str):
-            offset = self.offsets[offset]
-        pack_int_into(self._data, offset, value)
+        if isinstance(key, str):
+            offset = self.offsets[key]
+            size = self.offset_int_sizes[key]
+        else:
+            offset, size = key
+        pack_int_into(self._data, offset, value, size=size)
 
-    def get_int(self, offset: int | str):
-        if isinstance(offset, str):
-            offset = self.offsets[offset]
-        return unpack_int(self._data, offset)
+    def get_int(self, key: str | tuple[int, int]):
+        if isinstance(key, str):
+            offset = self.offsets[key]
+            size = self.offset_int_sizes[key]
+        else:
+            offset, size = key
+        return unpack_int(self._data, offset, size=size)
 
 
 class boma(Section):
@@ -303,13 +330,14 @@ class boma(Section):
         "subtype": 12,
     }
 
+    @override
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.subtype = self.get_int("subtype")
 
     def get_string(self):
         """ See `set_string` """
-        string_format = self.get_int(20)
+        string_format = self.get_int((20, 4))
         if string_format == 1:
             return self._data[36:].decode("utf_16_le")
         elif string_format == 2:
@@ -324,14 +352,14 @@ class boma(Section):
 
         self._edit_change_size()
 
-        string_format = self.get_int(20)
+        string_format = self.get_int((20, 4))
         if string_format == 1:
             self._data[36:] = value.encode("utf_16_le")
             # superclass will take care of the section length
-            self.set_int(24, self.size - 36)
+            self.set_int((24, 4), self.size - 36)
         elif string_format == 2:
             self._data[36:] = value.encode("utf_8")
-            self.set_int(24, self.size - 36)
+            self.set_int((24, 4), self.size - 36)
         else:
             self._data[20:] = value.encode("utf_8")
 
@@ -348,6 +376,8 @@ class DataContainerSection(Section):
     """ Subtype name -> subtype number """
     numeric_data_offsets: dict[int, dict[str, int]] = {}
     """ Subtype number -> offset name -> offset. Anything not given offsets here is assumed to be a string container. """
+    numeric_data_sizes: defaultdict[int, defaultdict[str, int]] = defaultdict(lambda: defaultdict(lambda: 4))
+    """ Subtype number -> offset name -> size. Anything not given offsets here is assumed to be a string container. """
 
     def data_subsection_of_subtype(self, subtype: str | int):
         if isinstance(subtype, str):
@@ -372,50 +402,47 @@ class DataContainerSection(Section):
                 raise ValueError(f"subtype {subtype} is not supposed to be a string")
         self.data_subsection_of_subtype(subtype).set_string(value)
 
-    def get_data_subsection_int(self, subtype: str | int, offset: str | int):
+    def get_data_subsection_int(self, subtype: str | int, key: str | tuple[int, int]):
         if isinstance(subtype, str):
             subtype_number = self.data_subtypes[subtype]
             if subtype_number not in self.numeric_data_offsets:
                 raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
             subtype = subtype_number
-        if isinstance(offset, str):
-            offset = self.numeric_data_offsets[subtype][offset]
-        return self.data_subsection_of_subtype(subtype).get_int(offset)
+        if isinstance(key, str):
+            key = (
+                self.numeric_data_offsets[subtype][key],
+                self.numeric_data_sizes[subtype][key]
+            )
+        return self.data_subsection_of_subtype(subtype).get_int(key)
 
-    def set_data_subsection_int(self, subtype: str | int, offset: str | int, value: int):
+    def set_data_subsection_int(self, subtype: str | int, key: str | tuple[int, int], value: int):
         if isinstance(subtype, str):
             subtype_number = self.data_subtypes[subtype]
             if subtype_number not in self.numeric_data_offsets:
                 raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
             subtype = subtype_number
-        if isinstance(offset, str):
-            offset = self.numeric_data_offsets[subtype][offset]
-        self.data_subsection_of_subtype(subtype).set_int(offset, value)
+        if isinstance(key, str):
+            key = (
+                self.numeric_data_offsets[subtype][key],
+                self.numeric_data_sizes[subtype][key]
+            )
+        self.data_subsection_of_subtype(subtype).set_int(key, value)
 
-    def __str__(self):
-        def f():
-            for subsection in self.subsections:
-                if isinstance(subsection, Data):
-                    for subtype_name, subtype_number in self.data_subtypes.items():
-                        if subtype_number == subsection.subtype:
-                            if subtype_number in self.numeric_data_offsets:
-                                yield f"\"{subtype_name}\": {{{", ".join(
-                                    f"\"{offset_name}\": {subsection.get_int(offset)}"
-                                    for offset_name, offset in self.numeric_data_offsets[subtype_number].items()
-                                )}}}"
-                            else:
-                                yield f"\"{subtype_name}\": \"{subsection.get_string()}\""
-                else:
-                    yield subsection.__class__.__name__
-
-        return (
-            f"{self.__class__.__name__} {{"
-            + ", ".join(f())
-            + "}"
-        )
-
-    def __repr__(self):
-        return self.__str__()
+    @override
+    def as_dict(self):
+        d = super().as_dict()
+        for subsection in self.subsections:
+            if isinstance(subsection, Data):
+                for subtype_name, subtype_number in self.data_subtypes.items():
+                    if subtype_number == subsection.subtype:
+                        if subtype_number in self.numeric_data_offsets:
+                            d[subtype_name] = {
+                                offset_name: subsection.get_int((offset, self.numeric_data_sizes[subtype_number][offset_name]))
+                                for offset_name, offset in self.numeric_data_offsets[subtype_number].items()
+                            }
+                        else:
+                            d[subtype_name] = subsection.get_string()
+        return d
 
 # don't know where these boma subtypes go because they aren't in my library
 # listed as "book" type on vollink but not present in my library: 0x42,
@@ -432,6 +459,7 @@ class DataContainerSection(Section):
 #         "framerate": 64,
 #     },
 # }
+
 
 class hsma(Section):
     offsets = {
@@ -456,6 +484,7 @@ Boundary = hsma
 class hfma(Section):  # inner hfma only, not outer hfma which is Library
     offsets = {
         **Section.offsets,
+        # some more known data listed here in vollink but none interesting to edit
     }
 
 
@@ -467,6 +496,7 @@ class plma(DataContainerSection):
     offsets = {
         **Section.offsets,
         "subsection_count": 8,
+        # some more known data listed here in vollink but none interesting to edit
     }
 
     data_subtypes = {
@@ -500,7 +530,12 @@ class iama(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
+        "iama_id": 16
     }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        **Section.offset_int_sizes,
+        "iama_id": 8
+    })
 
     data_subtypes = {
         "name": 0x12c,
@@ -530,7 +565,12 @@ class iAma(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
+        "iama_id": 16,
     }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        **Section.offset_int_sizes,
+        "iAma_id": 8
+    })
 
     data_subtypes = {
         # present in my library: 0x190,
@@ -559,14 +599,29 @@ class itma(DataContainerSection):
     offsets = {
         **Section.offsets,
         "subsection_count": 12,
-        # todo many of these fields are not 4 bytes
+        "track_id": 16,
         "love_or_dislike": 62,
         "stars": 65,
-        "movements_in_work": 86,
-        "movements_of_work": 88,
+        "total_movements": 86,
+        "movement": 88,
         "track_number": 160,
-        "year": 167,
+        "year": 168,
+        "iama_id": 172,
+        "iAma_id": 180,
+        "track_id_2": 272,
     }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        **Section.offset_int_sizes,
+        "track_id": 8,
+        "love_or_dislike": 2,
+        "stars": 1,
+        "total_movements": 2,
+        "movement": 2,
+        "track_number": 2,
+        "iama_id": 8,
+        "IAma_id": 8,
+        "track_id_2": 8,
+    })
 
     data_subtypes = {
         "track_numerics": 0x1,
@@ -585,7 +640,7 @@ class itma(DataContainerSection):
         "plays_skips": 0x17,
         "series_title": 0x18,
         "episode_number": 0x19,
-        "track_album_artist": 0x1b,
+        "album_artist": 0x1b,
         "series": 0x1c,
         # "xml block (unknown utility)": 0x1d,
         "title_sort": 0x1e,
@@ -609,6 +664,8 @@ class itma(DataContainerSection):
     }
     numeric_data_offsets = {
         0x1: {
+            "file_folder_count": 92,
+            "library_folder_count": 94,
             "bit_rate": 108,
             "date_added": 112,
             "date_modified": 148,
@@ -623,6 +680,12 @@ class itma(DataContainerSection):
             "skips": 52
         }
     }
+    numeric_data_sizes = defaultdict(lambda: defaultdict(lambda: 4), {
+        0x1: defaultdict(lambda: 4, {
+            "file_folder_count": 2,
+            "library_folder_count": 2,
+        })
+    })
 
     LOVE = 2
     DISLIKE = 3
@@ -660,7 +723,15 @@ class lpma(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
+        "total_tracks": 16,
+        "date_created": 22,
+        "playlist_id": 39,
+        "date_modified": 138,
     }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        **Section.offset_int_sizes,
+        "playlist_id": 8
+    })
 
     data_subtypes = {
         "playlist_name": 0xc8,
@@ -674,6 +745,11 @@ class lpma(DataContainerSection):
             # todo
         }
     }
+    numeric_data_sizes = defaultdict(lambda: defaultdict(lambda: 4), {
+        0xce: defaultdict(lambda: 4, {
+            # todo
+        })
+    })
 
 
 register_section_class(lpma)
@@ -706,7 +782,7 @@ class Library(Section):
 
     @override
     def __init__(self, library: bytes | bytearray | Path | str = DEFAULT_LIBRARY_FILE):
-        if not (isinstance(library, bytes) or isinstance(library, bytearray)):
+        if isinstance(library, Path) or isinstance(library, str):
             library = load_library_bytes(library)
 
         data = BytesIO(library)

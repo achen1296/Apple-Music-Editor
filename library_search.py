@@ -120,10 +120,10 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def match_int(self, offset: str | int, value: int):
+    def match_int(self, key: str | tuple[int, int], value: int):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if s.get_int(offset) == value:
+                if s.get_int(key) == value:
                     yield s
 
         self.search_actions.append(f)
@@ -167,10 +167,10 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def match_data_subsection_int(self, subtype: str | int, offset: str | int, value: int):
+    def match_data_subsection_int(self, subtype: str | int, key: str | tuple[int, int], value: int):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, DataContainerSection) and s.get_data_subsection_int(subtype, offset) == value:
+                if isinstance(s, DataContainerSection) and s.get_data_subsection_int(subtype, key) == value:
                     yield s
 
         self.search_actions.append(f)
