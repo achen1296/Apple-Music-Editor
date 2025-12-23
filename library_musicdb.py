@@ -501,11 +501,11 @@ class plma(DataContainerSection):
 
     data_subtypes = {
         # "unknown", "found under plma": 0x1f6,
-        "managed_media_folder": 0x1f8,
-        # listed as "book" type on vollink but not this type in my library: 0x1fc,
+        "media_folder_uri": 0x1f8,
+        "imported_itl_file":0x1fc,
         # listed as "book" type on vollink but not this type in my library: 0x1fd,
         # present in my library, not listed on vollink: 0x1ff,
-        # listed as "book" type on vollink but not this type in my library: 0x200,
+        "media_folder": 0x200,
     }
 
 
@@ -530,11 +530,11 @@ class iama(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
-        "iama_id": 16
+        "album_id": 16
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
-        "iama_id": 8
+        "album_id": 8
     })
 
     data_subtypes = {
@@ -565,17 +565,17 @@ class iAma(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
-        "iama_id": 16,
+        "album_id": 16,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
-        "iAma_id": 8
+        "artist_id": 8
     })
 
     data_subtypes = {
-        # present in my library: 0x190,
-        # present in my library: 0x191,
-        "xml_artwork_url": 0x192,
+        "artist": 0x190,
+        "artist_sort": 0x191,
+        "artwork_url_plist": 0x192,
     }
 
 
@@ -600,26 +600,56 @@ class itma(DataContainerSection):
         **Section.offsets,
         "subsection_count": 12,
         "track_id": 16,
-        "love_or_dislike": 62,
-        "stars": 65,
+        "skip_when_shuffling": 30,
+        "album_is_compilation": 38,
+        "disabled": 42,
+        "remember_playback_position": 50,
+        "show_composer_in_all_views": 51,
+        "use_work_and_movement": 52,
+        "purchased": 58,
+        "content_rating": 59,
+        "suggestion_flag": 62,
+        "rating": 65,
+        "bpm": 82,
+        "disc": 84,
         "total_movements": 86,
         "movement": 88,
+        "total_discs": 90,
+        "volume_adjustment": 92,
+        "start_pos": 148,
+        "stop_pos": 152,
         "track_number": 160,
         "year": 168,
-        "iama_id": 172,
-        "iAma_id": 180,
+        "album_id": 172,
+        "artist_id": 180,
+        "artwork_id_low": 256,
+        "artwork_id_high": 264,
         "track_id_2": 272,
+        "date_suggestion_flag_changed": 336,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
         "track_id": 8,
-        "love_or_dislike": 2,
-        "stars": 1,
+        "skip_when_shuffling": 1,
+        "album_is_compilation": 1,
+        "disabled": 1,
+        "remember_playback_position": 1,
+        "show_composer_in_all_views": 1,
+        "use_work_and_movement": 1,
+        "purchased": 1,
+        "content_rating": 1,
+        "suggestion_flag": 2,
+        "rating": 1,
+        "bpm": 2,
+        "disc": 2,
         "total_movements": 2,
         "movement": 2,
+        "total_discs": 2,
         "track_number": 2,
-        "iama_id": 8,
-        "IAma_id": 8,
+        "album_id": 8,
+        "artist_id": 8,
+        "artwork_id_low": 8,
+        "artwork_id_high": 8,
         "track_id_2": 8,
     })
 
@@ -630,18 +660,18 @@ class itma(DataContainerSection):
         "artist": 0x4,
         "genre": 0x5,
         "kind": 0x6,
-        # "not sure" on vollink: 0x7,
+        "equalizer": 0x7,
         "comment": 0x8,
-        # present in my library: 0xb,
+        "url": 0xb,
         "composer": 0xc,
         "grouping": 0xe,
-        "episode_comment": 0x12,
+        "episode_description": 0x12,
         "episode_synopsis": 0x16,
         "plays_skips": 0x17,
         "series_title": 0x18,
         "episode_number": 0x19,
         "album_artist": 0x1b,
-        "series": 0x1c,
+        "content_rating": 0x1c,
         # "xml block (unknown utility)": 0x1d,
         "title_sort": 0x1e,
         "album_sort": 0x1f,
@@ -649,29 +679,35 @@ class itma(DataContainerSection):
         "album_artist_sort": 0x21,
         "composer_sort": 0x22,
         "video": 0x24,
-        "copyright_holder": 0x2b,
-        # another "not sure" : 0x2e,
+        "isrc": 0x2b,
+        "copyright" : 0x2e,
         "series_synopsis": 0x33,
         "flavor_string": 0x34,
         # "xml block (unknown utility)": 0x36,
         # "xml block (unknown utility)": 0x38,
-        "purchaser_email": 0x3b,
+        "purchaser_username": 0x3b,
         "purchaser_name": 0x3c,
         "work_name": 0x3f,
         "movement_name": 0x40,
-        # present in my library: 0x43,
+        "file": 0x43,
         "series_title": 0x12f,
     }
     numeric_data_offsets = {
         0x1: {
+            "sample_rate": 80,
             "file_folder_count": 92,
             "library_folder_count": 94,
+            "artwork_count": 96,
+            "artwork_total_size": 104,
             "bit_rate": 108,
             "date_added": 112,
+            "lyrics_hash": 144,
             "date_modified": 148,
             "normalization": 152,
+            "purchase_date": 156,
+            "release_date": 160,
             "song_duration": 176,
-            "file size": 316,
+            "file_size": 316,
         },
         0x17: {
             "last_played": 28,
@@ -684,6 +720,7 @@ class itma(DataContainerSection):
         0x1: defaultdict(lambda: 4, {
             "file_folder_count": 2,
             "library_folder_count": 2,
+            "artwork_count": 2,
         })
     })
 
@@ -727,10 +764,12 @@ class lpma(DataContainerSection):
         "date_created": 22,
         "playlist_id": 39,
         "date_modified": 138,
+        "playlist_id_2": 280,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
-        "playlist_id": 8
+        "playlist_id": 8,
+        "playlist_id_2": 8,
     })
 
     data_subtypes = {
