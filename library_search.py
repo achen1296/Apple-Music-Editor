@@ -118,7 +118,7 @@ class LibrarySearcher:
                     yield s
 
         self.search_actions.append(f)
-        return
+        return self
 
     def match_int(self, offset: str | int, value: int):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
@@ -127,9 +127,9 @@ class LibrarySearcher:
                     yield s
 
         self.search_actions.append(f)
-        return
+        return self
 
-    def match_str(self, pattern: str, *, case_sensitive=False):
+    def match_string(self, pattern: str, *, case_sensitive=False):
         if not case_sensitive:
             pattern = pattern.lower()
 
@@ -145,7 +145,7 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def re_match_str(self, pattern: str | re.Pattern, *, re_flags=re.I):
+    def re_match_string(self, pattern: str | re.Pattern, *, re_flags=re.I):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
                 if isinstance(s, Data):
@@ -156,21 +156,61 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    # shortcuts for data specific to known types
+    # data subsection content
 
-    def match_data_subtype(self, subtype: int):
-        self.of_type(Data)
-        self.match_int("subtype", subtype)
+    def data_subsections_of_subtype(self, subtype: str | int):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if isinstance(s, DataContainerSection):
+                    yield s.data_subsection_of_subtype(subtype)
+
+        self.search_actions.append(f)
         return self
+
+    def match_data_subsection_int(self, subtype: str | int, offset: str | int, value: int):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if isinstance(s, DataContainerSection) and s.get_data_subsection_int(subtype, offset) == value:
+                    yield s
+
+        self.search_actions.append(f)
+        return self
+
+    def match_data_subsection_string(self, subtype: str | int, pattern: str, *, case_sensitive=False):
+        if not case_sensitive:
+            pattern = pattern.lower()
+
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if isinstance(s, DataContainerSection):
+                    string = s.get_data_subsection_string(subtype)
+                    if not case_sensitive:
+                        string = string.lower()
+                    if pattern in string:
+                        yield s
+
+        self.search_actions.append(f)
+        return self
+
+    def re_match_data_subsection_string(self, subtype: str | int, pattern: str | re.Pattern, *, re_flags=re.I):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for s in sections:
+                if isinstance(s, DataContainerSection):
+                    string = s.get_data_subsection_string(subtype)
+                    if re.search(pattern, string, re_flags):
+                        yield s
+
+        self.search_actions.append(f)
+        return self
+
+    # shortcuts for data specific to known types
 
     def track_title(self, title: str | re.Pattern, *, re=False, **kwargs):
         self.descendants_of_type(itma)
-        self.subsections_of_type(Data)
-        self.match_data_subtype(Data.subtypes["track_title"])
         if re:
-            self.re_match_str(title, **kwargs)
+            self.re_match_data_subsection_string("track_title", title, **kwargs)
         else:
-            self.match_str(title, **kwargs)
+            self.match_data_subsection_string("track_title", title, **kwargs)
         return self
 
 
@@ -179,11 +219,9 @@ if __name__ == "__main__":
     ls = (
         LibrarySearcher()
         .track_title(input("track title: "))
-        .parents()
-        .children_of_type(Data)
-        .match_data_subtype(Data.subtypes["track_plays_and_skips"])
+        .data_subsections_of_subtype("track_plays_skips")
     )
     for s in ls.search(l):
-        print(s)
+        print(s.parent)
         s.set_int(32, int(input("play count: ")))
     l.save()

@@ -317,269 +317,32 @@ class Section:
         return unpack_int(self._data, offset)
 
 
-class hsma(Section):
-    offsets = {
-        **Section.offsets,
-        "total_size": 8,
-    }
-    expected_subsections = {
-        b"hfma",
-        b"plma",
-        b"lama",
-        b"lAma",
-        b"ltma",
-        b"lPma",
-        b"LPma",
-    }
-
-
-register_section_class(hsma)
-Boundary = hsma
-
-
-class hfma(Section):  # inner hfma only, not outer hfma which is Library
-    offsets = {
-        **Section.offsets,
-    }
-
-
-register_section_class(hfma)
-Envelope = hfma
-
-
-class plma(Section):
-    offsets = {
-        **Section.offsets,
-        "subsection_count": 8,
-    }
-    expected_subsections = {b"boma"}
-
-
-register_section_class(plma)
-LibraryMaster = plma
-
-
-class lama(Section):
-    offsets = {
-        **Section.offsets,
-        "subsection_count": 8,
-    }
-    expected_subsections = {b"iama"}
-
-
-register_section_class(lama)
-AlbumList = lama
-
-
-class iama(Section):
-    offsets = {
-        **Section.offsets,
-        "total_size": 8,
-        "subsection_count": 12,
-    }
-    expected_subsections = {b"boma"}
-
-
-register_section_class(iama)
-Album = iama
-
-
-class lAma(Section):
-    offsets = {
-        **Section.offsets,
-        "subsection_count": 8,
-    }
-    expected_subsections = {b"iAma"}
-
-
-register_section_class(lAma)
-AristList = lAma
-
-
-class iAma(Section):
-    offsets = {
-        **Section.offsets,
-        "total_size": 8,
-        "subsection_count": 12,
-    }
-    expected_subsections = {b"boma"}
-
-
-register_section_class(iAma)
-Artist = iAma
-
-
-class ltma(Section):
-    offsets = {
-        **Section.offsets,
-        "subsection_count": 8,
-    }
-    expected_subsections = {b"itma"}
-
-
-register_section_class(ltma)
-TrackList = ltma
-
-
-class itma(Section):
-    offsets = {
-        **Section.offsets,
-        "subsection_count": 12,
-        # todo many of these fields are not 4 bytes
-        "love_or_dislike": 62,
-        "stars": 65,
-        "movements_in_work": 86,
-        "movements_of_work": 88,
-        "track_number": 160,
-        "track_year": 167,
-    }
-    expected_subsections = {b"boma"}
-
-    LOVE = 2
-    DISLIKE = 3
-    NOT_LOVE_OR_DISLIKE = 0
-
-    STARS_0 = 0
-    STARS_1 = 20
-    STARS_2 = 40
-    STARS_3 = 60
-    STARS_4 = 80
-    STARS_5 = 100
-
-
-register_section_class(itma)
-Track = itma
-
-
-class lPma(Section):
-    offsets = {
-        **Section.offsets,
-        "subsection_count": 8,
-        "playlist_length": 16,
-        "date_created": 22,
-        "date_modified": 138,
-    }
-    expected_subsections = {b"lpma"}
-
-
-register_section_class(lPma)
-PlaylistList = lPma
-
-
-class lpma(Section):
-    offsets = {
-        **Section.offsets,
-        "total_size": 8,
-        "subsection_count": 12,
-    }
-    expected_subsections = {b"boma"}
-
-
-register_section_class(lpma)
-Playlist = lpma
-
-
 class boma(Section):
     offsets = {
         **Section.offsets,
         "size": 8,  # only this section type has the size in a different place
         "subtype": 12,
     }
-    subtypes = {
-        "track_numerics": 0x1,
-        "track_title": 0x2,
-        "track_album": 0x3,
-        "track_artist": 0x4,
-        "genre": 0x5,
-        "kind": 0x6,
-        # "not sure" on vollink: 0x7,
-        "comment": 0x8,
-        "composer": 0xc,
-        "grouping": 0xe,
-        "episode_comment": 0x12,
-        "episode_synopsis": 0x16,
-        "track_plays_skips": 0x17,
-        "series_title": 0x18,
-        "episode_number": 0x19,
-        "track_album_artist": 0x1b,
-        "series": 0x1c,
-        # "xml block (unknown utility)": 0x1d,
-        "track_title_sort": 0x1e,
-        "track_album_sort": 0x1f,
-        "track_artist_sort": 0x20,
-        "track_album_artist_sort": 0x21,
-        "composer_sort": 0x22,
-        "video": 0x24,
-        "copyright_holder": 0x2b,
-        # another "not sure" : 0x2e,
-        "series_synopsis": 0x33,
-        "flavor_string": 0x34,
-        # "xml block (unknown utility)": 0x36,
-        # "xml block (unknown utility)": 0x38,
-        "purchaser_email": 0x3b,
-        "purchaser_name": 0x3c,
-        "work_name": 0x3f,
-        "movement_name": 0x40,
-        # listed as "book" type on vollink but not present in my library: 0x42,
-        "playlist_name": 0xc8,
-        # "unknown", "found under lpma": 0xc9,
-        # "unknown", "found under lpma": 0xca,
-        # "xml block (unknown utility)": 0xcd,
-        "ipfa": 0xce,
-        "album_name": 0x12c,
-        "album_artist": 0x12d,
-        "album_artist": 0x12e,  # duplicate name on vollink?
-        "series_title": 0x12f,
-        "xml_artwork_url": 0x192,
-        # another "unknown 64x4b hex string": 0x1e4,
-        # "unknown 64x4b hex string": 0x1f4,
-        # "unknown", "found under plma": 0x1f6,
-        "managed_media_folder": 0x1f8,
-        # listed as "book" type on vollink but not this type in my library: 0x1fc,
-        # listed as "book" type on vollink but not this type in my library: 01fd,
-        # listed as "book" type on vollink but not this type in my library: 0x200,
-        # "xml block (unknown utility)": 0x2bc,
-        # "xml block (unknown utility)": 0x3cc,
-    }
-    subtypes_additional_offsets = {
-        "track_numerics": {
-            "bit_rate": 108,
-            "date_added": 112,
-            "date_modified": 148,
-            "normalization": 152,
-            "song_duration": 176,
-            "file size": 316,
-        },
-        "track_plays_skips": {
-            "last_played": 28,
-            "plays": 32,
-            "last_skipped": 48,
-            "skips": 52
-        },
-        "video": {
-            "height": 20,
-            "width": 24,
-            "framerate": 64,
-        },
-        "ipfa": {
-            # todo
-        }
-    }
-    string_subtypes = {
-        k
-        for k in subtypes
-        if k not in subtypes_additional_offsets
-    }
+
+    # don't know where these boma subtypes go because they aren't in my library
+    # listed as "book" type on vollink but not present in my library: 0x42,
+    # "unknown 64x4b hex string": 0x1f4,
+    # another "unknown 64x4b hex string": 0x1fe,
+    # "xml block (unknown utility)": 0x2bc,
+    # "xml block (unknown utility)": 0x3cc,
+
+    # don't know where this offset data goes
+    # numeric_data_offsets = {
+    #     "video": {
+    #         "height": 20,
+    #         "width": 24,
+    #         "framerate": 64,
+    #     },
+    # }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.subtype = self.get_int("subtype")
-        for name, st in boma.subtypes.items():
-            if self.subtype == st:
-                self.offsets = {
-                    **boma.offsets,
-                    **boma.subtypes_additional_offsets[name],
-                }
 
     def get_string(self):
         """ See `set_string` """
@@ -612,6 +375,328 @@ class boma(Section):
 
 register_section_class(boma)
 Data = boma
+
+
+class DataContainerSection(Section):
+    expected_subsections = {b"boma"}
+
+    """ Add methods for boma subsections """
+    data_subtypes: dict[str, int] = {}
+    """ Subtype name -> subtype number """
+    numeric_data_offsets: dict[int, dict[str, int]] = {}
+    """ Subtype number -> offset name -> offset. Anything not given offsets here is assumed to be a string container. """
+
+    def data_subsection_of_subtype(self, subtype: str | int):
+        if isinstance(subtype, str):
+            subtype = self.data_subtypes[subtype]
+        for s in self.subsections:
+            if isinstance(s, Data) and s.subtype == subtype:
+                return s  # assumes there's only one subsection with the specified subtype
+        raise KeyError(self, subtype)
+
+    def get_data_subsection_string(self, subtype: str | int):
+        if isinstance(subtype, str):
+            # if subtype given as int we will assume caller already knows what they're doing (or intentionally wants to bypass these checks e.g. for a section type unknown to the code)
+            subtype_number = self.data_subtypes[subtype]
+            if subtype_number in self.numeric_data_offsets:
+                raise ValueError(f"subtype {subtype} is not supposed to be a string")
+        return self.data_subsection_of_subtype(subtype).get_string()
+
+    def set_data_subsection_string(self, subtype: str | int, value: str):
+        if isinstance(subtype, str):
+            subtype_number = self.data_subtypes[subtype]
+            if subtype_number in self.numeric_data_offsets:
+                raise ValueError(f"subtype {subtype} is not supposed to be a string")
+        self.data_subsection_of_subtype(subtype).set_string(value)
+
+    def get_data_subsection_int(self, subtype: str | int, offset: str | int):
+        if isinstance(subtype, str):
+            subtype_number = self.data_subtypes[subtype]
+            if subtype_number not in self.numeric_data_offsets:
+                raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
+            subtype = subtype_number
+        if isinstance(offset, str):
+            offset = self.numeric_data_offsets[subtype][offset]
+        return self.data_subsection_of_subtype(subtype).get_int(offset)
+
+    def set_data_subsection_int(self, subtype: str | int, offset: str | int, value: int):
+        if isinstance(subtype, str):
+            subtype_number = self.data_subtypes[subtype]
+            if subtype_number not in self.numeric_data_offsets:
+                raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
+            subtype = subtype_number
+        if isinstance(offset, str):
+            offset = self.numeric_data_offsets[subtype][offset]
+        self.data_subsection_of_subtype(subtype).set_int(offset, value)
+
+    def __str__(self):
+        def f():
+            for subsection in self.subsections:
+                if isinstance(subsection, Data):
+                    for subtype_name, subtype_number in self.data_subtypes.items():
+                        if subtype_number == subsection.subtype:
+                            if subtype_number in self.numeric_data_offsets:
+                                yield f"{subtype_name}: numerics {{{", ".join(
+                                    f"{offset_name}: {subsection.get_int(offset)}"
+                                    for offset_name, offset in self.numeric_data_offsets[subtype_number].items()
+                                )}}}"
+                            else:
+                                yield f"{subtype_name}: \"{subsection.get_string()}\""
+                else:
+                    yield subsection.__class__.__name__
+
+        return (
+            f"{self.__class__.__name__} ["
+            + ", ".join(f())
+            + "]"
+        )
+
+
+class hsma(Section):
+    offsets = {
+        **Section.offsets,
+        "total_size": 8,
+    }
+    expected_subsections = {
+        b"hfma",
+        b"plma",
+        b"lama",
+        b"lAma",
+        b"ltma",
+        b"lPma",
+        b"LPma",
+    }
+
+
+register_section_class(hsma)
+Boundary = hsma
+
+
+class hfma(Section):  # inner hfma only, not outer hfma which is Library
+    offsets = {
+        **Section.offsets,
+    }
+
+
+register_section_class(hfma)
+Envelope = hfma
+
+
+class plma(DataContainerSection):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+
+    data_subtypes = {
+        # "unknown", "found under plma": 0x1f6,
+        "managed_media_folder": 0x1f8,
+        # listed as "book" type on vollink but not this type in my library: 0x1fc,
+        # listed as "book" type on vollink but not this type in my library: 0x1fd,
+        # present in my library, not listed on vollink: 0x1ff,
+        # listed as "book" type on vollink but not this type in my library: 0x200,
+    }
+
+
+register_section_class(plma)
+LibraryMaster = plma
+
+
+class lama(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+    expected_subsections = {b"iama"}
+
+
+register_section_class(lama)
+AlbumList = lama
+
+
+class iama(DataContainerSection):
+    offsets = {
+        **Section.offsets,
+        "total_size": 8,
+        "subsection_count": 12,
+    }
+
+    data_subtypes = {
+        "album_name": 0x12c,
+        "album_artist": 0x12d,
+        "album_artist": 0x12e,  # duplicate name on vollink?
+    }
+
+
+register_section_class(iama)
+Album = iama
+
+
+class lAma(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+    expected_subsections = {b"iAma"}
+
+
+register_section_class(lAma)
+AristList = lAma
+
+
+class iAma(DataContainerSection):
+    offsets = {
+        **Section.offsets,
+        "total_size": 8,
+        "subsection_count": 12,
+    }
+
+    data_subtypes = {
+        # present in my library: 0x190,
+        # present in my library: 0x191,
+        "xml_artwork_url": 0x192,
+    }
+
+
+register_section_class(iAma)
+Artist = iAma
+
+
+class ltma(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+    }
+    expected_subsections = {b"itma"}
+
+
+register_section_class(ltma)
+TrackList = ltma
+
+
+class itma(DataContainerSection):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 12,
+        # todo many of these fields are not 4 bytes
+        "love_or_dislike": 62,
+        "stars": 65,
+        "movements_in_work": 86,
+        "movements_of_work": 88,
+        "track_number": 160,
+        "track_year": 167,
+    }
+
+    data_subtypes = {
+        "track_numerics": 0x1,
+        "track_title": 0x2,
+        "track_album": 0x3,
+        "track_artist": 0x4,
+        "genre": 0x5,
+        "kind": 0x6,
+        # "not sure" on vollink: 0x7,
+        "comment": 0x8,
+        # present in my library: 0xb,
+        "composer": 0xc,
+        "grouping": 0xe,
+        "episode_comment": 0x12,
+        "episode_synopsis": 0x16,
+        "track_plays_skips": 0x17,
+        "series_title": 0x18,
+        "episode_number": 0x19,
+        "track_album_artist": 0x1b,
+        "series": 0x1c,
+        # "xml block (unknown utility)": 0x1d,
+        "track_title_sort": 0x1e,
+        "track_album_sort": 0x1f,
+        "track_artist_sort": 0x20,
+        "track_album_artist_sort": 0x21,
+        "composer_sort": 0x22,
+        "video": 0x24,
+        "copyright_holder": 0x2b,
+        # another "not sure" : 0x2e,
+        "series_synopsis": 0x33,
+        "flavor_string": 0x34,
+        # "xml block (unknown utility)": 0x36,
+        # "xml block (unknown utility)": 0x38,
+        "purchaser_email": 0x3b,
+        "purchaser_name": 0x3c,
+        "work_name": 0x3f,
+        "movement_name": 0x40,
+        # present in my library: 0x43,
+        "series_title": 0x12f,
+    }
+    numeric_data_offsets = {
+        0x1: {
+            "bit_rate": 108,
+            "date_added": 112,
+            "date_modified": 148,
+            "normalization": 152,
+            "song_duration": 176,
+            "file size": 316,
+        },
+        0x17: {
+            "last_played": 28,
+            "plays": 32,
+            "last_skipped": 48,
+            "skips": 52
+        }
+    }
+
+    LOVE = 2
+    DISLIKE = 3
+    NOT_LOVE_OR_DISLIKE = 0
+
+    STARS_0 = 0
+    STARS_1 = 20
+    STARS_2 = 40
+    STARS_3 = 60
+    STARS_4 = 80
+    STARS_5 = 100
+
+
+register_section_class(itma)
+Track = itma
+
+
+class lPma(Section):
+    offsets = {
+        **Section.offsets,
+        "subsection_count": 8,
+        "playlist_length": 16,
+        "date_created": 22,
+        "date_modified": 138,
+    }
+    expected_subsections = {b"lpma"}
+
+
+register_section_class(lPma)
+PlaylistList = lPma
+
+
+class lpma(DataContainerSection):
+    offsets = {
+        **Section.offsets,
+        "total_size": 8,
+        "subsection_count": 12,
+    }
+
+    data_subtypes = {
+        "playlist_name": 0xc8,
+        # "unknown", "found under lpma": 0xc9,
+        # "unknown", "found under lpma": 0xca,
+        # "xml block (unknown utility)": 0xcd,
+        "ipfa": 0xce,
+    }
+    numeric_data_offsets = {
+        0xce: {
+            # todo
+        }
+    }
+
+
+register_section_class(lpma)
+Playlist = lpma
 
 
 # see readme
