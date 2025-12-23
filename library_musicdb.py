@@ -303,22 +303,6 @@ class boma(Section):
         "subtype": 12,
     }
 
-    # don't know where these boma subtypes go because they aren't in my library
-    # listed as "book" type on vollink but not present in my library: 0x42,
-    # "unknown 64x4b hex string": 0x1f4,
-    # another "unknown 64x4b hex string": 0x1fe,
-    # "xml block (unknown utility)": 0x2bc,
-    # "xml block (unknown utility)": 0x3cc,
-
-    # don't know where this offset data goes
-    # numeric_data_offsets = {
-    #     "video": {
-    #         "height": 20,
-    #         "width": 24,
-    #         "framerate": 64,
-    #     },
-    # }
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.subtype = self.get_int("subtype")
@@ -433,6 +417,21 @@ class DataContainerSection(Section):
     def __repr__(self):
         return self.__str__()
 
+# don't know where these boma subtypes go because they aren't in my library
+# listed as "book" type on vollink but not present in my library: 0x42,
+# "unknown 64x4b hex string": 0x1f4,
+# another "unknown 64x4b hex string": 0x1fe,
+# "xml block (unknown utility)": 0x2bc,
+# "xml block (unknown utility)": 0x3cc,
+
+# don't know where this offset data goes
+# numeric_data_offsets = {
+#     "video": {
+#         "height": 20,
+#         "width": 24,
+#         "framerate": 64,
+#     },
+# }
 
 class hsma(Section):
     offsets = {

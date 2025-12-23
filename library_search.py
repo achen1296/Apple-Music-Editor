@@ -109,7 +109,7 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    # generic content
+    # content
 
     def match_bytes(self, offset: str | int, value: bytes):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
@@ -203,25 +203,15 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    # shortcuts for data specific to known types
-
-    def track_title(self, title: str | re.Pattern, *, re=False, **kwargs):
-        self.descendants_of_type(itma)
-        if re:
-            self.re_match_data_subsection_string("title", title, **kwargs)
-        else:
-            self.match_data_subsection_string("title", title, **kwargs)
-        return self
-
 
 if __name__ == "__main__":
     l = Library()
     ls = (
         LibrarySearcher()
-        .track_title(input("track title: "))
-        .data_subsections_of_subtype("plays_skips")
+        .descendants_of_type(Track)
+        .match_data_subsection_string("title", input("track title: "))
     )
     for s in ls.search(l):
-        print(s.parent)
-        s.set_int(32, int(input("play count: ")))
+        assert isinstance(s, Track)
+        s.set_data_subsection_int("plays_skips", "plays", int(input("play count: ")))
     l.save()
