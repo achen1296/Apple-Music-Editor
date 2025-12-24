@@ -530,11 +530,14 @@ class iama(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
-        "album_id": 16
+        "album_id": 16,
+        "first_track_id": 32,
+        "last_played": 100,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
-        "album_id": 8
+        "album_id": 8,
+        "first_track_id": 8,
     })
 
     data_subtypes = {
@@ -565,11 +568,12 @@ class iAma(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
-        "album_id": 16,
+        "artist_id": 16,
+        "artist_store_id": 52,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
-        "artist_id": 8
+        "artist_id": 8,
     })
 
     data_subtypes = {
@@ -710,6 +714,7 @@ class itma(DataContainerSection):
             "file_size": 316,
         },
         0x17: {
+            "track_id": 20,
             "last_played": 28,
             "plays": 32,
             "last_skipped": 48,
@@ -807,16 +812,31 @@ register_section_class(LPma)
 
 class Library(Section):
     # subclass of Section -- representing the entire library as the (outer) hfma header with everything else as subsections
-    # the entire library does not bother maintain its "total_size" (the length of the entire file) because that also depends on the encryption/compression process, so that's handled in `save_library_bytes`
+    # this class does not maintain what would otherwise be its "total_size" (the length of the entire file) because that also depends on the encryption/compression process, so that's handled in `save_library_bytes`
     # however, I do make sure the modified date is set
     offsets = {
         **Section.offsets,
+        "file_format_major_version": 12,
+        "file_format_minor_version": 14,
+        # "apple_music_version": 16, # this is a string which would currently break the code expecting ints only other than in boma
+        "library_id": 48,
+        "musicdb_file_type": 56,
         "song_count": 68,
         "playlist_count": 72,
         "album_count": 76,
         "artist_count": 80,
+        # "max_crypt_size": 84, # handled in load/save_library_bytes
+        "library_time_offset": 88,
         "date_modified": 100,
+        "library_id_itunes": 108,
     }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        **Section.offset_int_sizes,
+        "file_format_major_version": 2,
+        "file_format_minor_version": 2,
+        "library_id": 8,
+        "library_id_itunes": 8,
+    })
     check_signature = False  # hfma signature is registered for the inner one
 
     @override
