@@ -2,10 +2,8 @@ from collections import defaultdict
 import os
 import zlib
 from datetime import datetime, timezone
-from enum import Enum
 from io import SEEK_CUR, BytesIO
 from pathlib import Path
-from re import M
 from typing import Callable, Iterable, Iterator, Type, override
 
 from Crypto.Cipher import AES
@@ -749,9 +747,6 @@ class lPma(Section):
     offsets = {
         **Section.offsets,
         "subsection_count": 8,
-        "playlist_length": 16,
-        "date_created": 22,
-        "date_modified": 138,
     }
     expected_subsections = {b"lpma"}
 
@@ -767,7 +762,7 @@ class lpma(DataContainerSection):
         "subsection_count": 12,
         "total_tracks": 16,
         "date_created": 22,
-        "playlist_id": 39,
+        "playlist_id": 30,
         "date_modified": 138,
         "playlist_id_2": 280,
     }
@@ -778,10 +773,10 @@ class lpma(DataContainerSection):
     })
 
     data_subtypes = {
-        "playlist_name": 0xc8,
-        # "unknown", "found under lpma": 0xc9,
-        # "unknown", "found under lpma": 0xca,
-        # "xml block (unknown utility)": 0xcd,
+        "name": 0xc8,
+        "smart_playlist": 0xc9,
+        # something else to do with smart playlists: 0xca,
+        # "generated_artwork_uuids_plist": 0xcd,
         "ipfa": 0xce,
     }
     numeric_data_offsets = {
