@@ -778,14 +778,14 @@ class lpma(DataContainerSection):
         "ipfa": 0xce,
     }
     numeric_data_offsets = {
-        0xce: {
-            # todo
-        }
+        0xce: {},   # todo
+        0xca: {},   # todo
+        0xc9: {},   # todo
     }
     numeric_data_sizes = defaultdict(lambda: defaultdict(lambda: 4), {
-        0xce: defaultdict(lambda: 4, {
-            # todo
-        })
+        0xce: defaultdict(lambda: 4, {}), # todo
+        0xca: defaultdict(lambda: 4, {}), # todo
+        0xc9: defaultdict(lambda: 4, {}), # todo
     })
 
 

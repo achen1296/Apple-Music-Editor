@@ -6,7 +6,7 @@ There are quite a few places where I independently discovered something and then
 
 - Apple Music appears to use `zlib` compress level 1 (best speed) (experimentally verified by using `load_library` then `save_library` with no edits and seeing which one produces an identical file), but it also seems to accept any compression level (tried saving with different compression levels and opening Apple Music). (Not that there's any particular reason to use another compression level when Apple Music will resave the library itself the next time you open it.)
 - On the other hand, it doesn't seem to like it when the size of the encrypted portion is changed — at least none of the sizes I tried was accepted. (Again, not that there's any reason to change this.)
-- My file ends with a new, undocumented section type LPma, which is contained in its own hsma section (which has "section subtype" 0x11). However, aside from its signature and size, it's all 0s. (This section is not present in the library from 3 months ago.)
+- My file ends with a new, undocumented section type LPma, which is contained in its own hsma section (which has "section subtype" 0x11). However, aside from its signature and size, it's all 0s. (This section is not present in the library from 3 months ago.) Update: I missed it before, there is a 6 at offset 12. The section is 0x60 = 96 bytes long.
 
 ## List Sections (start with l) and hsma
 
