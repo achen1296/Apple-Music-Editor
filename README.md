@@ -98,8 +98,8 @@ Take a look at [observations.md](observations.md) for loosely structured notes a
   - UTF-16 strings are always little-endian.
 - Integers are almost always unsigned, it will be noted where this is not the case.
 - Booleans (checkboxes) are always 1 byte, 0 = false, 1 = true.
-- In the tables below, an offset "..." means all of the offsets in between the previous and next entries (or until the end of the section if at the end).
-- There are many places with all 0s. It is tempting to assume that these are just reserved space — but this is not always the case! There are many cases where 0 is the default value indicating that some feature is not used, a pointer is not assigned, etc., and your library file will always contain 0 there if you happen to have never used that feature!
+- In the tables below, an offset "..." means all of the offsets in between the previous and next entries (or until the end of the section if at the end) were always 0 in my library (unless I missed any).
+  - It is tempting to assume that these are just reserved empty space — but this is not always the case! There are many cases where 0 is the default value indicating that some feature is not used, a pointer is not assigned, etc., and your library file will always contain 0 there if you happen to have never used that feature!
 - While I was dissecting the meaning of each part of the file I found that:
   - a value with sparse bits like 0x 03 01 00 01 is usually a collection of bit or enum flags
   - a low value like 25, 304, etc. is usually some kind of count
