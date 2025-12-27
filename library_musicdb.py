@@ -449,15 +449,6 @@ class DataContainerSection(Section):
 # "xml block (unknown utility)": 0x2bc,
 # "xml block (unknown utility)": 0x3cc,
 
-# don't know where this offset data goes
-# numeric_data_offsets = {
-#     "video": {
-#         "height": 20,
-#         "width": 24,
-#         "framerate": 64,
-#     },
-# }
-
 
 class hsma(Section):
     offsets = {
@@ -500,7 +491,7 @@ class plma(DataContainerSection):
     data_subtypes = {
         # "unknown", "found under plma": 0x1f6,
         "media_folder_uri": 0x1f8,
-        "imported_itl_file":0x1fc,
+        "imported_itl_file": 0x1fc,
         # listed as "book" type on vollink but not this type in my library: 0x1fd,
         # present in my library, not listed on vollink: 0x1ff,
         "media_folder": 0x200,
@@ -541,7 +532,7 @@ class iama(DataContainerSection):
     data_subtypes = {
         "name": 0x12c,
         "artist": 0x12d,
-        "artist": 0x12e,  # duplicate name on vollink?
+        "album_artist": 0x12e,
     }
 
 
@@ -674,7 +665,7 @@ class itma(DataContainerSection):
         "episode_number": 0x19,
         "album_artist": 0x1b,
         "content_rating": 0x1c,
-        # "xml block (unknown utility)": 0x1d,
+        "asset_info_plist": 0x1d,
         "title_sort": 0x1e,
         "album_sort": 0x1f,
         "artist_sort": 0x20,
@@ -682,11 +673,11 @@ class itma(DataContainerSection):
         "composer_sort": 0x22,
         "video": 0x24,
         "isrc": 0x2b,
-        "copyright" : 0x2e,
+        "copyright": 0x2e,
         "series_synopsis": 0x33,
         "flavor_string": 0x34,
-        # "xml block (unknown utility)": 0x36,
-        # "xml block (unknown utility)": 0x38,
+        "artwork_plist": 0x36,
+        "redownload_params_plist": 0x38,
         "purchaser_username": 0x3b,
         "purchaser_name": 0x3c,
         "work_name": 0x3f,
@@ -715,9 +706,16 @@ class itma(DataContainerSection):
             "track_id": 20,
             "last_played": 28,
             "plays": 32,
+            # jsharkey13 has "play_count_2": 36 but I'm not sure what this means
             "last_skipped": 48,
             "skips": 52
-        }
+            # jsharkey13 has "skip_count_2": 56 but I'm not sure what this means
+        },
+        0x24: {
+            "height": 20,
+            "width": 24,
+            "framerate": 64,
+        },
     }
     numeric_data_sizes = defaultdict(lambda: defaultdict(lambda: 4), {
         0x1: defaultdict(lambda: 4, {
@@ -774,9 +772,9 @@ class lpma(DataContainerSection):
 
     data_subtypes = {
         "name": 0xc8,
-        "smart_playlist": 0xc9,
-        # something else to do with smart playlists: 0xca,
-        # "generated_artwork_uuids_plist": 0xcd,
+        "smart_playlist_rules": 0xc9,
+        "smart_playlist_options": 0xca,
+        "generated_artwork_uuids_plist": 0xcd,
         "ipfa": 0xce,
     }
     numeric_data_offsets = {
