@@ -130,7 +130,7 @@ Interpreting unknown values:
   - It is tempting to assume that these are just reserved empty space — but this is not always the case! As I discovered, there are many cases where 0 is the default value indicating that some feature is not used, a pointer is not assigned, etc., and your library file will always contain 0 there if you happen to have never used that feature! For example, did you know that you can favorite artists, albums, and playlists as well as tracks? Neither did I until after exploring every nook and cranny of the GUI for this project, and all of those bytes were 0s until I found them.
 - "(a?)" is shorthand for "(always?)", speculating that an offset always has the value given in the example because it is the only one I have ever seen (this is not given comprehensively, I may have missed some cases).
   - In principle, section lengths could be different between sections of the same type. In practice, however, they are always the same for a certain section type, with the exception of the badly-behaved [boma](#boma-binary-object) (nice alliteration ;) children. Therefore I will not mark these with (a?) and you may assume the example value is the one and only value that ever appears.
-  - Obviously the section signature will also always be the same for a certain section type.
+  - Obviously the section signature will also always be the same for a certain section type, almost by definition.
 
 # Encryption and Compression
 
@@ -141,17 +141,19 @@ To get what I refer to as the "raw" library bytes from the file as saved on disk
   - The file size if file size \< max crypt size in hfma
   - Otherwise file size - outer hfma length - ((file size - outer hfma length) % 16)
   - The max crypt size always seems to be 102400, I was not able to find any other values accepted by the Apple Music program (not that there's any reason to use a different one)
-- Starting after the outer hfma, decrypt \<crypt size\> bytes using AES128-ECB and the encryption key (see code).
+- Starting after the outer hfma, decrypt \<crypt size\> bytes using AES128-ECB and the encryption key (see code)
 - Concatenate the remaining bytes in the file after the encrypted portion onto the decrypted bytes
 - Decompress the result with zlib
   - Experimentally, Apple Music uses compression level 1 (best speed), but it also seems to accept any compression level (not that there's any particular reason to use another compression level when Apple Music will resave the library itself the next time you open it)
 - Concatenate the decompressed result onto the outer hfma header
 
+The remainder of this document describes the raw library bytes.
+
 # Section Structure
 
 [Back to TOC](#table-of-contents)
 
-The file is divided into what most have previously called "sections". Sections may have subsections, creating a tree structure (so I also call them "children"). If section A has subsections B and C, and B has subsections D and E, then they will appear in the file in the order A B D E C
+The file is divided into what most have previously called "sections". Sections may have subsections, creating a tree structure (so I also call them "children"). If section A has subsections B and C, and B has subsections D and E, then they will appear in the file in the order A B D E C. In my code, I treat the outer [hfma](#hfma-file-header) section as the tree's root (thus its class name is `Library`, and the class name `hfma` is used only for the inner one).
 
 Almost all sections begin with 8 bytes that have the same meaning.
 
@@ -168,7 +170,7 @@ These are also extremely common, but not universal.
 | 8 or 12 | 4      | Number of subsections                                                                 | 3                 |
 | 12      | 4      | Section subtype (enum value that hints at the subsection contents)                    | 3                 |
 
-Using either associated sections length (which I call "total size" in some places in my code) or number of subsections, it is possible to determine where the subsections end and the next section at either the same level or a higher one begins (a section with subsections usually must have at least one of these). Some kinds of sections have both of these, which is why number of subsections is occasionally at offset 12 instead of 8. When this is the case, my code prefers to use the associated sections length, because it is possible to use this to continue on afterward even in the case of mysterious subsections.
+Using either associated sections length (which I call "total size" in some places in my code) or number of subsections, it is possible to determine where the subsections end and the next section at either the same level or a higher one begins (a section with subsections usually must have at least one of these). Some kinds of sections have both of these, which is why number of subsections is occasionally at offset 12 instead of 8. When this is the case, my code prefers to use the associated sections length, because it is possible to use this to continue on afterward even in the case of mysterious subsections that might appear in the future.
 
 # hfma (File Header)
 
@@ -180,30 +182,36 @@ Speculation: "Apple Music file header" (acronym reversed due to endianness)? Or 
 
 There is one version of this section outside of the encryption/compression process, containing the metadata needed to reverse it. There is also a version of this section inside, which is _mostly_ a copy of the outer one where it has non-zero values. Maybe it's used to verify correct decryption/decompression.
 
-| Offset | Length | Meaning                                                                                                                        | Examples Value(s)                               | Duplicated in Inner Copy  |
-| ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ------------------------- |
-| 0      | 4      | Section signature                                                                                                              | hfma                                            | -                         |
-| 4      | 4      | Section length (bytes)                                                                                                         | 160                                             | -                         |
-| 8      | 4      | File length in bytes (when encrypted/compressed, not raw, therefore this cannot be considered as "associated sections length") | 5767                                            | no (0 in inner)           |
-| 12     | 2      | File format major version                                                                                                      | 21                                              | yes                       |
-| 14     | 2      | File format minor version                                                                                                      | 1                                               | yes                       |
-| 16     | 32     | Apple Music version as null-terminated string                                                                                  | 1.0.1.37                                        | yes                       |
-| 48     | 8      | Library ID                                                                                                                     | 0xF60BBBD97C7D8F41                              | yes                       |
-| 56     | 4      | musicdb file type                                                                                                              | see below                                       | no                        |
-| 60     | 4      | ?                                                                                                                              | 20 (a?)                                         | yes                       |
-| 64     | 4      | ? (not zero but different between inner and outer, might be bit flags)                                                         | 0x 02 01 01 00 (outer) / 0x 02 00 00 00 (inner) | different (both non-zero) |
-| 68     | 4      | Song count                                                                                                                     | 136                                             | no                        |
-| 72     | 4      | Playlist count                                                                                                                 | 15                                              | no                        |
-| 76     | 4      | ?                                                                                                                              | 0x CB 01 00 00                                  | no                        |
-| 80     | 4      | Artist count                                                                                                                   | 24                                              | no                        |
-| 84     | 4      | Max crypt size                                                                                                                 | 102400 (a?)                                     | no                        |
-| 88     | 4      | Library time offset in seconds (i.e. timezone)                                                                                 | -14400 (US/NY) (_signed value_)                 | yes                       |
-| 92     | 8      | Your Apple Store account ID (0 when not signed in)                                                                             | 0xA10D876FF3940021                              | yes                       |
-| 100    | 4      | Library modification date                                                                                                      | 3658272271                                      | yes                       |
-| 104    | 4      | ?                                                                                                                              | 1 (outer) / 0 (inner)                           | different/no?             |
-| 108    | 8      | Library ID (if from iTunes import)                                                                                             | repeat of offset 48, or 0                       | yes                       |
-| 116    | 4      | ?                                                                                                                              | 0x 23 01 00 00 (outer) / 0 (inner)              | different                 |
-| 120    | 8      | ? (not repeated anywhere else in file; observed changing chaotically like a hash when other things are edited)                 | 0x 3F F2 06 1B 6E 62 23 1E                      | yes                       |
+In the last column of the table below, which is unique to this section type:
+
+- yes = the data is duplicated
+- no = non-zero data in the outer hfma is zero in the inner hfma
+- different = both have non-zero values but not the same value as each other
+
+| Offset | Length | Meaning                                                                                                                        | Examples Value(s)                               | Duplicated in Inner Copy |
+| ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ------------------------ |
+| 0      | 4      | Section signature                                                                                                              | hfma                                            | yes                      |
+| 4      | 4      | Section length (bytes)                                                                                                         | 160                                             | yes                      |
+| 8      | 4      | File length in bytes (when encrypted/compressed, not raw, therefore this cannot be considered as "associated sections length") | 5767                                            | no                       |
+| 12     | 2      | File format major version                                                                                                      | 21                                              | yes                      |
+| 14     | 2      | File format minor version                                                                                                      | 1                                               | yes                      |
+| 16     | 32     | Apple Music version as null-terminated string                                                                                  | 1.0.1.37                                        | yes                      |
+| 48     | 8      | Library ID                                                                                                                     | 0xF60BBBD97C7D8F41                              | yes                      |
+| 56     | 4      | musicdb file type                                                                                                              | see below                                       | no                       |
+| 60     | 4      | ?                                                                                                                              | 20 (a?)                                         | yes                      |
+| 64     | 4      | ? (not zero but different between inner and outer, might be bit flags)                                                         | 0x 02 01 01 00 (outer) / 0x 02 00 00 00 (inner) | different                |
+| 68     | 4      | Song count                                                                                                                     | 136                                             | no                       |
+| 72     | 4      | Playlist count                                                                                                                 | 15                                              | no                       |
+| 76     | 4      | ?                                                                                                                              | 0x CB 01 00 00                                  | no                       |
+| 80     | 4      | Artist count                                                                                                                   | 24                                              | no                       |
+| 84     | 4      | Max crypt size                                                                                                                 | 102400 (a?)                                     | no                       |
+| 88     | 4      | Library time offset in seconds (i.e. timezone)                                                                                 | -14400 (US/NY) (_signed value_)                 | yes                      |
+| 92     | 8      | Your Apple Store account ID (0 when not signed in)                                                                             | 0xA10D876FF3940021                              | yes                      |
+| 100    | 4      | Library modification date                                                                                                      | 3658272271                                      | yes                      |
+| 104    | 4      | ?                                                                                                                              | 1                                               | no                       |
+| 108    | 8      | Library ID (if from iTunes import)                                                                                             | repeat of offset 48, or 0                       | yes                      |
+| 116    | 4      | ?                                                                                                                              | 0x 23 01 00 00                                  | no                       |
+| 120    | 8      | ? (not repeated anywhere else in file; observed changing chaotically like a hash when other things are edited)                 | 0x 3F F2 06 1B 6E 62 23 1E                      | yes                      |
 | ...    |
 
 Offset 56 musicdb file type enum values:
@@ -232,7 +240,7 @@ Seems completely understood: ✓
 | 4      | 4      | Section length             | 56                |
 | 8      | 4      | Associated sections length | 1234              |
 | 12     | 4      | Section subtype            | 3                 |
-| ...    | 0s     |
+| ...    |
 
 Parents: [hfma](#hfma-file-header) (outer)
 
@@ -260,7 +268,7 @@ Seems completely understood: ✓
 | 4      | 4      | Section length             | 20                |
 | 8      | 4      | Associated sections length | 160               |
 | 12     | 4      | Section subtype            | 3                 |
-| 16     | 4      | 0s                         | 0 (a?)            |
+| ...    |
 
 Here is a major disagreement with Gary Vollink's table: he, and therefore everyone after him but before me, believed that boma sections broke the usual pattern, and thought boma sections had at offset 4 a mysterious value "always 0x14", while the section length was at offset 8 instead of at 4 as usual. But I believe that boma sections are _not_ the ones that break the pattern. The realization for me came from looking at [smart playlist rules](#slst-smart-playlist-rules-list), which clearly had a section header "SLst" the repeated once for each rule, along with noticing that Gary Vollink came so close to the same realization with boma sections of subtype 0xce, containing [ipfa](#ipfa-playlist-item) subsections — in that case, he labeled offset 4 "subdata start" but still called offset 8 the section length. The problem is that _the children_ of boma sections break the pattern — many do not have a signature, at least not one made of 4 printable ASCII characters, and offset 4 is almost never the section length. This is why I speculate that the "bo" means "object binary"/"binary object", as an indication that the children do not follow the usual section-based format, even though obviously everything is in binary.
 
@@ -382,7 +390,7 @@ Appears only once.
 | 0      | 4      | Section signature     | lama              |
 | 4      | 4      | Section length        | 48                |
 | 8      | 4      | Number of subsections | 1234              |
-| ...    | 0s     |
+| ...    |
 
 Parents: [hsma](#hsma-section-header)
 
@@ -454,7 +462,7 @@ Appears only once.
 | 0      | 4      | Section signature     | lAma              |
 | 4      | 4      | Section length        | 100               |
 | 8      | 4      | Number of subsections | 3                 |
-| ...    | 0s     |
+| ...    |
 
 Parents: [hsma](#hsma-section-header)
 
@@ -523,7 +531,7 @@ Appears only once.
 | 0      | 4      | Section signature     | ltma              |
 | 4      | 4      | Section length        | 92                |
 | 8      | 4      | Number of subsections | 3                 |
-| ...    | 0s     |
+| ...    |
 
 Parents: [hsma](#hsma-section-header)
 
@@ -566,7 +574,7 @@ Seems completely understood: X
 | ...     |
 | 55      | 1       | ? (usually 1, sometimes 0, likely another boolean, observed changing from 0 to 1 on first play of a song)                                                                                                                                  |
 | ...     |
-| 57      | 1       | ? (always 1, likely another boolean)                                                                                                                                                                                                       |
+| 57      | 1       | Downloaded                                                                                                                                                                                                                                 | see below                                |
 | 58      | 1       | Purchased (boolean)                                                                                                                                                                                                                        |
 | 59      | 1       | Content rating                                                                                                                                                                                                                             | see below                                |
 | ...     |
@@ -624,6 +632,11 @@ Offset 42: The checkboxes this refers to can be seen by:
 
 This will also enable you to toggle the checkbox "match only checked items" on smart playlists. _This is stored with the reverse convention of other checkboxes: 0 = checked, 1 = unchecked (disabled)_. For songs that are disabled, they will never come up in the queue on their own, unless they are specifically played first (then they _can_ come up again when the songs repeat). Basically, this is a stronger version of "skip when shuffling" because it also applies when not shuffling. Additionally, for smart playlists with "match only checked items" enabled, the unchecked items are not only disabled from playing, but will not be included in the playlist at all.
 
+Offset 57 downloaded enum values:
+
+- 0x03 = not downloaded (only possible for songs purchased from Apple Music)
+- 0x01 = downloaded (including all files you added to Apple Music that were not purchased from it)
+
 Offset 59 content rating enum values:
 
 - 0 = default
@@ -655,7 +668,7 @@ Grandchildren:
   - 0x6 = kind - e.g. "MPEG audio file"
   - 0x7 = equalizer - always a UTF-16 string that looks like "#!#\<number\>#!#" where the number is different for each equalizer option, strange that this is not a single-byte enum
   - 0x8 = comments
-  - 0xB = URL - for local files, URL-encoded version of the file path "file:///C:/Users..."
+  - 0xB = URL - only present for downloaded tracks, URL-encoded version of the file path "file:///C:/Users..."
   - 0xC = composer
   - 0xE = grouping
   - 0x12 = episode description
@@ -675,10 +688,10 @@ Grandchildren:
   - 0x33 = series synopsis
   - 0x34 = flavor string
   - 0x3B = purchaser username
-  - 0x3C = purchaser name
+  - 0x3C = purchaser name - only present for downloaded tracks
   - 0x3F = work name
   - 0x40 = movement name
-  - 0x43 = file path
+  - 0x43 = file path - only present for downloaded tracks
   - 0x12F = series title
 - [Raw Strings](#raw-string)
   - 0x36 = artwork plist (XML)
@@ -692,55 +705,74 @@ Seems completely understood: X
 
 The length is always 364 bytes (the boma parent always has associated sections length 384).
 
-| Offset | Length | Meaning                                                                                                                                                                           | Examples Value(s)                    |
-| ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 0      | 4      | ? (a counter value incrementing by 2 from 1003, perhaps to avoid colliding with other signatures like string sections, observed changing on first play/skip of a song)            | 1003                                 |
-| ...    |
+I have observed that there can be 2 of these under the same [itma](#itma-track) after a purchased song is downloaded. However, _I think this is a bug_, because it seems to prepend an entire new one along with a bunch of other data, leaving the second (original) one nearly unchanged in the process. I assume the extra ones then go undetected and unused, because Apple Music made no complaints after I removed them myself.
+
+| Offset | Length | Meaning                                                                                                                                                                           | Examples Value(s)                                          |
+| ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 0      | 4      | ? (a counter value incrementing by 2 from 1003, perhaps to avoid colliding with other signatures like string sections, observed changing on first play/skip of a song)            | 1003                                                       |
+| 4      | 4?     | ? (also the download flag from [itma](#itma-track) offset 57?)                                                                                                                    |
 | 8      | 8      | ? (an ID? doesn't appear elsewhere)                                                                                                                                               |
+| 16     | 4?     | ?                                                                                                                                                                                 | 1                                                          |
+| 20     | 4?     | ?                                                                                                                                                                                 | 0x 00 01 01 00                                             |
+| 21     | 1?     | ? (a bit flag? observed changing from 0 to 1 on first song play/skip)                                                                                                             |
+| 22     | 1?     | ? (a bit flag? observed changing from 0 to 1 on first song play/skip)                                                                                                             |
 | ...    |
-| 21     | 1      | ? (a bit flag? observed changing from 0 to 1 on first song play/skip)                                                                                                             |
-| 22     | 1      | ? (a bit flag? observed changing from 0 to 1 on first song play/skip)                                                                                                             |
+| 44     | 4?     | ?                                                                                                                                                                                 | 0x 00 01 00 01                                             |
+| 48     | 4?     | ?                                                                                                                                                                                 | 0x 00 03 01 00                                             |
+| 52     | 4?     | ?                                                                                                                                                                                 | 0x 00 00 02 03                                             |
 | ...    |
-| 60     | 4      | Sample rate in Hz (float32)                                                                                                                                                       | 44100.0 (0x 00 44 2C 47 20 33 50 4D) |
-| ...    |
-| 68     | 4      | File type                                                                                                                                                                         |
-| 72     | 2      | File folder count                                                                                                                                                                 |
-| 74     | 2      | Library folder count                                                                                                                                                              |
+| 60     | 4      | Sample rate in Hz (float32)                                                                                                                                                       | 44100.0 (0x 00 44 2C 47)                                   |
+| 64     | 4      | ?                                                                                                                                                                                 | 0x 20 33 50 4D, 0x 20 41 34 4D                             |
+| 68     | 4      | File type (not sure what this means)                                                                                                                                              | 0                                                          |
+| 72     | 2      | File folder count (not sure what this means)                                                                                                                                      | 0, 5                                                       |
+| 74     | 2      | Library folder count (not sure what this means)                                                                                                                                   | 0, 1                                                       |
 | 76     | 2      | Number of artworks (you can attach more than one)                                                                                                                                 |
-| ...    |
-| ...    |
-| 84     | 4      | Total size of all attached artworks (bytes)                                                                                                                                       | 234                                  |
+| 78     | 2      | ?                                                                                                                                                                                 | 51                                                         |
+| 80     | 2?     | ?                                                                                                                                                                                 | 0x 01 00 in a song not downloaded, 0x FF FF in one that is |
+| 82     | 2?     | ?                                                                                                                                                                                 | 0, 2                                                       |
+| 84     | 4      | Total size of all attached artworks (bytes)                                                                                                                                       | 234                                                        |
 | 88     | 4      | Bit rate                                                                                                                                                                          |
 | 92     | 4      | Date added                                                                                                                                                                        |
 | ...    |
-| 108    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     |
-| 112    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     |
+| 100    | 4      | ?                                                                                                                                                                                 | 0, 1                                                       |
 | ...    |
-| 120    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     |
+| 108    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     | 0, 0x 40 08 00 00                                          |
+| 112    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     | 0, 0x 14 03 00 00                                          |
+| ...    |
+| 120    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     | 0, 1                                                       |
 | 124    | 4      | Custom lyrics tiny hash? (0 if no custom lyrics, otherwise, always the same value for the same custom lyrics, lyrics [only stored in audio file](#data-stored-in-the-audio-file)) |
 | 128    | 4      | Date modified                                                                                                                                                                     |
 | 132    | 4      | Normalization                                                                                                                                                                     |
 | 136    | 4      | Purchase date                                                                                                                                                                     |
 | 140    | 4      | Release date                                                                                                                                                                      |
-| ...    |
+| 144    | 4      | ?                                                                                                                                                                                 | 0, 2                                                       |
+| 148    | 4      | ?                                                                                                                                                                                 | 0, 0x 61 34 70 6D                                          |
+| 152    | 4      | ?                                                                                                                                                                                 | 0, 0x 23 01 00 00                                          |
 | 156    | 4      | Song duration in milliseconds                                                                                                                                                     |
 | 160    | 4      | Album ID in Apple Music store (see [iama](#iama-album) offset 104)                                                                                                                |
 | ...    |
 | 168    | 4      | Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                               |
 | ...    |
+| 184    | 4      | ?                                                                                                                                                                                 | 2                                                          |
+| ...    |
 | 200    | 4      | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                   |
 | ...    |
 | 208    | 4      | _Album_ Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                       |
 | ...    |
-| 256    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     |
+| 256    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     | 0, 0x AC A4 AE 00                                          |
+| ...    |
+| 264    | 4?     | ?                                                                                                                                                                                 | 16                                                         |
 | ...    |
 | 280    | 4      | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                   |
 | ...    |
+| 288    | 8?     | ?                                                                                                                                                                                 | 0, 0x 37 F8 94 37 4B F4 01 00                              |
 | 296    | 4      | File size                                                                                                                                                                         |
 | ...    |
 | 304    | 4      | Song ID in Apple Music store - plug into the end of the URL "https://music.apple.com/song/..." as decimal - 0 if a custom album                                                   |
 | ...    |
 | 328    | 8      | ? (see [itma](#itma-track) offset 220)                                                                                                                                            |
+| ...    |
+| 356    | 4      | ? (a date)                                                                                                                                                                        |
 | ...    |
 
 Grandparents: [itma](#itma-track)
@@ -808,7 +840,7 @@ Appears only once.
 | 0      | 4      | Section signature     | lPma              |
 | 4      | 4      | Section length        | 92                |
 | 8      | 4      | Number of subsections | 8                 |
-| ...    | 0s     |
+| ...    |
 
 Parents: [hsma](#hsma-section-header)
 
@@ -912,6 +944,8 @@ Grandchildren:
 Seems completely understood: X
 
 "Apple ? playlist item"?
+
+One [lpma](#lpma-playlist) can have many ipfa grandchilldren. This is the only [boma](#boma-binary-object) subtype where this is possible — in all other cases, the boma subtype is different from all other siblings.
 
 | Offset | Length | Meaning                                             | Examples Value(s)                         |
 | ------ | ------ | --------------------------------------------------- | ----------------------------------------- |
@@ -1018,9 +1052,11 @@ Children:
 
 [Back to TOC](#table-of-contents)
 
+Seems completely understood: ✓
+
 Length is 56 + offset 54 value. For non-strings, it is always 124 (offset 54 is always 68).
 
-**_<h1>All numbers and UTF-16 strings in this section type and its children are big-endian!!</h1>_**
+**_<h1>All numbers and UTF-16 strings in this section type are big-endian!!</h1>_**
 
 | Offset | Length                                       | Meaning                        | Examples Value(s) |
 | ------ | -------------------------------------------- | ------------------------------ | ----------------- |
