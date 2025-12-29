@@ -33,7 +33,12 @@ So far I have successfully edited simple things like the play count of a track, 
 
 # Table of Contents
 
-- [General Notes](#general-notes)
+- [Investigation Tips](#investigation-tips)
+
+---
+
+- [General Notes](#general-format-notes)
+- [Encryption and Compression](#encryption-and-compression)
 - [Section Structure](#section-structure)
 
 ---
@@ -75,8 +80,8 @@ So far I have successfully edited simple things like the play count of a track, 
 - [lpma (Playlist)](#lpma-playlist)
 - [ipfa (Playlist Item)](#ipfa-playlist-item)
 - [Smart Playlist Options](#smart-playlist-options)
-- [SLst (Smart Playlist Rules)](#slst-smart-playlist-rules)
-- [Text Match Rule](#text-match-rule)
+- [SLst (Smart Playlist Rules List)](#slst-smart-playlist-rules-list)
+- [Smart Playlist Rule](#smart-playlist-rule)
 
 ---
 
@@ -84,30 +89,52 @@ So far I have successfully edited simple things like the play count of a track, 
 
 ---
 
-- [Accompanying Files](#relevant-accompanying-files)
+- [Accompanying Files](#accompanying-files)
 - [Data Stored in the Audio File](#data-stored-in-the-audio-file)
 
-# General Notes
+# Investigation Tips
+
+Methods in order from best to worst IMO:
+
+- dump the binary, change something in the GUI, and dump the binary again to compare what's changed in a hex editor — if only one thing has changed, that's definitely the byte representation of the change you made in the GUI
+  - modification dates, or in general other related data, will often change also, so it helps if you already know what those are and can ignore them
+  - it is helpful to narrow focus to the section type of the thing you changed, e.g. hfma/plma for settings on the entire library, itma for tracks, etc.
+- explore what values are common at certain offsets inside of your library (the larger the better) for a hint at the value's meaning
+  - see "Interpreting unknown values" below
+  - see how different items containing certain values are related (e.g. same name, same album, same playlist...)
+  - search in the GUI for appearances of a value on items that have it (e.g. pick out some tracks that have a certain value, find their name, and look at their properties in the GUI to find that value) — works well for dates and counts, but would be hard to figure out enums this way
+- change values in the binary arbitrarily and launch Apple Music to see if there is any effect
+  - I have not tried this method because I imagine it would be very unfruitful
+  - I assume you will just cause the library to be detected as corrupt most of the time by doing this
+  - if not, it will be difficult to figure out what, if anything has changed
+  - the only cases where this would be useful that wouldn't also be covered by the first method would be values you cannot edit in the GUI
+
+Interpreting unknown values:
+
+- a value with sparse bits like 0x 03 01 00 01 is usually a collection of bit or enum flags
+- a low value like 25, 304, etc. is usually some kind of count
+  - a value that has several ff bytes at the end is likely a negative value of low magnitude represented as a signed integer
+- a value with dense bits like 0x cd 3a 45 18 is usually some kind of ID or hash
+- with one exception to the previous: dates are expressed in seconds since 1904-01-01T00:00 (former MacOS epoch), therefore values in the high 3 billions (or higher if you are reading this in the 2030s and beyond) should be suspected as dates
+- try throwing numbers (in decimal) into a web search "site:music.apple.com \<number\>" if you think it might be an Apple Music store ID
+
+# General Format Notes
 
 [Back to TOC](#table-of-contents)
 
 - I will assume little-endianness because nobody has documented a case of big-endianness, even though Gary Vollink speculates it might be possible. Therefore 0x 04 03 02 01 interpreted as an unsigned int is 16909060, not 67305985.
   - UTF-16 strings are always little-endian.
 - Integers are almost always unsigned, it will be noted where this is not the case.
-- Booleans (checkboxes) are always 1 byte, 0 = false, 1 = true.
+- Booleans (checkboxes) are always 1 byte, 0 = false/not checked, 1 = true/checked.
 - In the tables below, an offset "..." means all of the offsets in between the previous and next entries (or until the end of the section if at the end) were always 0 in my library (unless I missed any).
-  - It is tempting to assume that these are just reserved empty space — but this is not always the case! There are many cases where 0 is the default value indicating that some feature is not used, a pointer is not assigned, etc., and your library file will always contain 0 there if you happen to have never used that feature!
-- While I was dissecting the meaning of each part of the file I found that:
-  - a value with sparse bits like 0x 03 01 00 01 is usually a collection of bit or enum flags
-  - a low value like 25, 304, etc. is usually some kind of count
-    - a value that has several ff bytes at the end is likely a negative value of low magnitude represented as a signed integer
-  - a value with dense bits like 0x cd 3a 45 18 is usually some kind of ID
-  - with one exception to the previous: dates are expressed in seconds since 1904-01-01T00:00 (former MacOS epoch), therefore values in the high 3 billions (or higher if you are reading this in the 2030s and beyond) should be suspected as dates
-  - try throwing numbers (in decimal) into a search "site:music.apple.com \<number\>" if you think it might be a store ID
-- "(a?)" is shorthand for "(always?)", speculating that an offset always has the value given in the example because it is the only one I have ever seen (not having this doesn't mean an offset has multiple observed values — I may have just missed it).
+  - It is tempting to assume that these are just reserved empty space — but this is not always the case! As I discovered, there are many cases where 0 is the default value indicating that some feature is not used, a pointer is not assigned, etc., and your library file will always contain 0 there if you happen to have never used that feature! For example, did you know that you can favorite artists, albums, and playlists as well as tracks? Neither did I until after exploring every nook and cranny of the GUI for this project, and all of those bytes were 0s until I found them.
+- "(a?)" is shorthand for "(always?)", speculating that an offset always has the value given in the example because it is the only one I have ever seen (this is not given comprehensively, I may have missed some cases).
   - In principle, section lengths could be different between sections of the same type. In practice, however, they are always the same for a certain section type, with the exception of the badly-behaved [boma](#boma-binary-object) (nice alliteration ;) children. Therefore I will not mark these with (a?) and you may assume the example value is the one and only value that ever appears.
+  - Obviously the section signature will also always be the same for a certain section type.
 
 # Encryption and Compression
+
+To get what I refer to as the "raw" library bytes from the file as saved on disk by Apple Music:
 
 - The outer [hfma](#hfma-file-header) section is saved plain and contains the required metadata.
 - The crypt size is:
@@ -115,9 +142,10 @@ So far I have successfully edited simple things like the play count of a track, 
   - Otherwise file size - outer hfma length - ((file size - outer hfma length) % 16)
   - The max crypt size always seems to be 102400, I was not able to find any other values accepted by the Apple Music program (not that there's any reason to use a different one)
 - Starting after the outer hfma, decrypt \<crypt size\> bytes using AES128-ECB and the encryption key (see code).
-- Concatenate the decrypted bytes with the remaining bytes in the file after the encrypted portion
-- Decompress with zlib
+- Concatenate the remaining bytes in the file after the encrypted portion onto the decrypted bytes
+- Decompress the result with zlib
   - Experimentally, Apple Music uses compression level 1 (best speed), but it also seems to accept any compression level (not that there's any particular reason to use another compression level when Apple Music will resave the library itself the next time you open it)
+- Concatenate the decompressed result onto the outer hfma header
 
 # Section Structure
 
@@ -140,7 +168,7 @@ These are also extremely common, but not universal.
 | 8 or 12 | 4      | Number of subsections                                                                 | 3                 |
 | 12      | 4      | Section subtype (enum value that hints at the subsection contents)                    | 3                 |
 
-Using either associated sections length (which I call "total size" in some places in my code") or number of subsections, it is possible to determine where the subsections end and the next section at either the same level or a higher one begins (a section with subsections usually must have at least one of these). Some kinds of sections have both of these, which is why number of subsections is occasionally at offset 12 instead of 8. When this is the case, my code prefers to use the associated sections length, because it is possible to use this to continue on afterward even in the case of mysterious subsections.
+Using either associated sections length (which I call "total size" in some places in my code) or number of subsections, it is possible to determine where the subsections end and the next section at either the same level or a higher one begins (a section with subsections usually must have at least one of these). Some kinds of sections have both of these, which is why number of subsections is occasionally at offset 12 instead of 8. When this is the case, my code prefers to use the associated sections length, because it is possible to use this to continue on afterward even in the case of mysterious subsections.
 
 # hfma (File Header)
 
@@ -172,11 +200,11 @@ There is one version of this section outside of the encryption/compression proce
 | 88     | 4      | Library time offset in seconds (i.e. timezone)                                                                                 | -14400 (US/NY) (_signed value_)                 | yes                       |
 | 92     | 8      | Your Apple Store account ID (0 when not signed in)                                                                             | 0xA10D876FF3940021                              | yes                       |
 | 100    | 4      | Library modification date                                                                                                      | 3658272271                                      | yes                       |
-| 104    | 4      | ?                                                                                                                              | 1 (outer) / 0 (inner)                           | different                 |
+| 104    | 4      | ?                                                                                                                              | 1 (outer) / 0 (inner)                           | different/no?             |
 | 108    | 8      | Library ID (if from iTunes import)                                                                                             | repeat of offset 48, or 0                       | yes                       |
 | 116    | 4      | ?                                                                                                                              | 0x 23 01 00 00 (outer) / 0 (inner)              | different                 |
-| 120    | 8      | an ID? (not repeated anywhere else in file)                                                                                    | 0x 3F F2 06 1B 6E 62 23 1E                      | yes                       |
-| ...    | 0s?    |
+| 120    | 8      | ? (not repeated anywhere else in file; observed changing chaotically like a hash when other things are edited)                 | 0x 3F F2 06 1B 6E 62 23 1E                      | yes                       |
+| ...    |
 
 Offset 56 musicdb file type enum values:
 
@@ -234,7 +262,7 @@ Seems completely understood: ✓
 | 12     | 4      | Section subtype            | 3                 |
 | 16     | 4      | 0s                         | 0 (a?)            |
 
-Here is a major disagreement with Gary Vollink's table: he, and therefore everyone after him but before me, believed that boma sections broke the usual pattern, and thought boma sections had at offset 4 a mysterious value "always 0x14", while the section length was at offset 8 instead of at 4 as usual. But I believe that boma sections are _not_ the ones that break the pattern. The realization for me came from looking at [smart playlist rules](#slst-smart-playlist-rules), which clearly had a section header "SLst" the repeated once for each rule, along with noticing that Gary Vollink came so close to the same realization with boma sections of subtype 0xce, containing [ipfa](#ipfa-playlist-item) subsections — in that case, he labeled offset 4 "subdata start" but still called offset 8 the section length. The problem is that _the children_ of boma sections break the pattern — many do not have a signature, at least not one made of printable ASCII characters, and offset 4 is never(?) the section length. This is why I speculate that the "bo" means "object binary"/"binary object", as an indication that the children do not follow the usual section-based format, even though obviously everything is in binary.
+Here is a major disagreement with Gary Vollink's table: he, and therefore everyone after him but before me, believed that boma sections broke the usual pattern, and thought boma sections had at offset 4 a mysterious value "always 0x14", while the section length was at offset 8 instead of at 4 as usual. But I believe that boma sections are _not_ the ones that break the pattern. The realization for me came from looking at [smart playlist rules](#slst-smart-playlist-rules-list), which clearly had a section header "SLst" the repeated once for each rule, along with noticing that Gary Vollink came so close to the same realization with boma sections of subtype 0xce, containing [ipfa](#ipfa-playlist-item) subsections — in that case, he labeled offset 4 "subdata start" but still called offset 8 the section length. The problem is that _the children_ of boma sections break the pattern — many do not have a signature, at least not one made of 4 printable ASCII characters, and offset 4 is almost never the section length. This is why I speculate that the "bo" means "object binary"/"binary object", as an indication that the children do not follow the usual section-based format, even though obviously everything is in binary.
 
 For children of boma, this means that all offsets listed on Gary Vollink's page or in jsharkey13's code will be 20 greater than the ones I am listing.
 
@@ -259,12 +287,13 @@ Children: Depends on subtype. See each of the parents, which list their grandchi
 
 Seems completely understood: X
 
-| Offset | Length   | Meaning                                                                       | Examples Value(s) |
-| ------ | -------- | ----------------------------------------------------------------------------- | ----------------- |
-| 0      | 4        | Section signature, 2 for UTF-16 and 1 for UTF-8                               | 1, 2              |
-| 4      | 4 (8?)   | _String_ length, _not_ section length — only measured starting from offset 16 | 100               |
+| Offset | Length   | Meaning                                                                                        | Examples Value(s) |
+| ------ | -------- | ---------------------------------------------------------------------------------------------- | ----------------- |
+| 0      | 4        | Section signature, 2 for UTF-16 and 1 for UTF-8                                                | 1, 2              |
+| 4      | 4        | _String_ length, _not_ section length — only measured starting from offset 16                  | 100               |
+| 8      | 4        | ? (observed changing for album artist, composer, album, genre the first time a song is played) |
 | ...    |
-| 16     | variable | The string data in the specified encoding                                     | any string        |
+| 16     | variable | The string data in the specified encoding                                                      | any string        |
 
 Parents: [boma](#boma-binary-object), many different subtypes
 
@@ -298,6 +327,8 @@ Appears only once.
 | 4      | 4      | Section length                                                                                                          | 194                |
 | 8      | 4      | Number of subsections                                                                                                   | 6                  |
 | ...    |
+| 24     | 1      | Checkbox "Settings" → "General" → "Show" → "Songs list checkboxes"                                                      |
+| ...    |
 | 52     | 4      | ? (0x 00 00 02 00 in my library)                                                                                        |
 | 58     | 8      | Library ID                                                                                                              | 0xF60BBBD97C7D8F41 |
 | ...    |
@@ -312,7 +343,7 @@ Appears only once.
 | 136    | 4      | ? (256 in mine)                                                                                                         |
 | ...    |
 | 144    | 4      | ? (0x 00 00 01 01 in mine)                                                                                              |
-| 148    | 4      | ? (1 in mine)                                                                                                           |
+| 148    | 1      | Checkbox "Settings" → "Files" → "Keep media folder organized"                                                           |
 | ...    |
 | 160    | 4      | ? (0x 00 00 02 00 in mine)                                                                                              |
 | ...    |
@@ -330,7 +361,7 @@ Grandchildren:
 - 0x1F6 = ? (contains an ID? not repeated anywhere)
 - 0x1FF = ? (contains 2 copies of library ID in my library) (_note that this appears to have a subsection with a UTF-16 string signature but it isn't one_)
 - [Strings](#string-section):
-  - boma subtype 0x1F8 = media folder URI
+  - boma subtype 0x1F8 = media folder URI ("file://localhost/C:/...")
 - [Raw Strings](#raw-string)
   - 0x1FC = imported iTunes .itl file
   - 0x1FD = media folder path (_encoded as UTF-16_)
@@ -376,7 +407,7 @@ Seems completely understood: X
 | 28     | 4      | ?                                                                                                                                                      | 1 (a?)              |
 | 32     | 8      | Track ID of first track in album, but sometimes 0 (is it possible to have an empty album?)                                                             | 0xC89ECA05FB184E3E  |
 | 40     | 1      | Star rating (1 star = 20, 5 stars = 100)                                                                                                               | 20                  |
-| 41     | 1      | ? (during experimentation, 0x20 for 0 stars, 0x01 for all other ratings; but file also contains these 2 values in other combinations with ratings)     |
+| 41     | 1      | Album inheritance of star rating from its songs                                                                                                        | see below           |
 | 42     | 1      | Suggestion flag                                                                                                                                        | see below           |
 | ...    |
 | 64     | 8      | Album ID again, but sometimes 0 (usually 0 for newer albums? iTunes ID?)                                                                               | repeat of offset 16 |
@@ -387,6 +418,13 @@ Seems completely understood: X
 | ...    |
 | 120    | 4      | ? (nearly always 2, but rarely otherwise found duplicated at offset 120 of [iAma (Artist)](#iama-artist) and nowhere else, might be a date when not 2) |
 | ...    |
+
+Offset 41 album inheritance of star rating enum values:
+
+- 0x01 = album is rated directly by the user, _not_ inheriting
+- 0x20 = album is _not_ rated directly by the user and its rating has been calculated as a (rounded) average of the star rating of its songs
+
+Although this can also work in reverse — the direct star rating of an album is inherited by songs inside that lack a direct rating from the user — that doesn't get stored anywhere inside the file, presumably because it is easier to calculate (just copied rather than being an average).
 
 Offset 42 suggestion flag enum values: see [itma](#itma-track)
 
@@ -442,15 +480,21 @@ Seems completely understood: X
 | ...    |
 | 52     | 4      | Artist ID in Apple Music store - plug into the end of the URL "https://music.apple.com/artist/..." as decimal - 0 if a custom artist                           | 461932 ("It's the Final Countdown...") |
 | ...    |
+| 60     | 4      | Suggestion flag modified date                                                                                                                                  |
 | 64     | 16     | Artwork UUID in [artwork.sqlite](#artworksqlite), only for remote images, see that section for details                                                         | 0xDDAE1C...                            |
 | 80     | 8      | Artist ID again, but sometimes 0 (iTunes?)                                                                                                                     | repeat of 16                           |
 | ...    |
 | 96     | 4      | ? (almost always 0 but sometimes 45)                                                                                                                           |
-| 100    | 4      | ? (almost always 0x 00 00 00 01 but sometimes 0x 05 00 00 01)                                                                                                  |
+| 100    | 1      | ? (almost always 0 but sometimes 5)                                                                                                                            |
+| 101    | 1      | Suggestion flag                                                                                                                                                |
+| ...    |
+| 103    | 1      | ? (always 1)                                                                                                                                                   |
 | 104    | 4      | ? (almost always 0 but sometimes 1)                                                                                                                            |
 | ...    |
 | 120    | 4      | ? (almost always 2, but rarely otherwise see [iama](#iama-album) offset 120, the set of values found here are a superset of those, might be a date when not 2) |
 | ...    |
+
+Offset 101 suggestion flag enum values: see [itma](#itma-track)
 
 Parents: [lAma](#lama-artist-list)
 
@@ -493,86 +537,92 @@ Seems completely understood: X
 
 "Apple Music track item"?
 
-| Offset  | Length  | Meaning                                                                                                                                                                                                                                 | Examples Value(s)                        |
-| ------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| 0       | 4       | Section signature                                                                                                                                                                                                                       | itma                                     |
-| 4       | 4       | Section length                                                                                                                                                                                                                          | 376                                      |
-| 8       | 2? 4?   | ? (usually in range 1000-3000, observed changing when equalizer is set but doesn't matter which equalizer)                                                                                                                              | 0x F3 0C 00 00                           |
-| 12      | 4       | Number of subsections                                                                                                                                                                                                                   | 18                                       |
-| 16      | 8       | Track ID                                                                                                                                                                                                                                | 0xD5F6F65777A704BC                       |
-| 24      | 4       | ? (counts up by 2 starting from 1002 in the order the tracks appear in the file)                                                                                                                                                        | 1002                                     |
+| Offset  | Length  | Meaning                                                                                                                                                                                                                                    | Examples Value(s)                        |
+| ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| 0       | 4       | Section signature                                                                                                                                                                                                                          | itma                                     |
+| 4       | 4       | Section length                                                                                                                                                                                                                             | 376                                      |
+| 8       | 2? 4?   | ? (usually in range 1000-3000, observed changing when equalizer is set but doesn't matter which equalizer, for other reasons as well)                                                                                                      | 0x F3 0C 00 00                           |
+| 12      | 4       | Number of subsections                                                                                                                                                                                                                      | 18                                       |
+| 16      | 8       | Track ID                                                                                                                                                                                                                                   | 0xD5F6F65777A704BC                       |
+| 24      | 4       | ? (counts up by 2 starting from 1002 in the order the tracks appear in the file; observed changing on first play or skip of a song)                                                                                                        | 1002                                     |
 | ...     |
-| 30      | 1       | Checkbox "Skip when shuffling"                                                                                                                                                                                                          | 0 or 1                                   |
-| 31      | 1       | ? (usually 1, but sometimes 0, looks like another boolean)                                                                                                                                                                              |
+| 30      | 1       | Checkbox "Skip when shuffling"                                                                                                                                                                                                             | 0 or 1                                   |
+| 31      | 1       | ? (usually 1, but sometimes 0, looks like another boolean, observed changing from 0 to 1 on first play of a song)                                                                                                                          |
 | ...     |
-| 33      | 1       | ? (usually 0, but sometimes 1, looks like another boolean)                                                                                                                                                                              |
+| 33      | 1       | ? (usually 0, but sometimes 1, looks like another boolean)                                                                                                                                                                                 |
 | ...     |
-| 35      | 1       | ? (always 1, looks like another boolean given the context)                                                                                                                                                                              |
+| 35      | 1       | ? (always 1, looks like another boolean given the context)                                                                                                                                                                                 |
 | ...     |
-| 38      | 1       | Checkbox "Album is compilation"                                                                                                                                                                                                         |
+| 38      | 1       | Checkbox "Album is compilation"                                                                                                                                                                                                            |
 | ...     |
-| 42      | 1       | Disabled (boolean) (this is what jsharkey13 labels it as but I'm not sure what this means)                                                                                                                                              |
+| 42      | 1       | Checkbox disabled ("Songs list checkboxes") - see below                                                                                                                                                                                    |
 | ...     |
-| 47      | 1       | ? (almost always 0, rarely 1, likely another boolean)                                                                                                                                                                                   |
+| 47      | 1       | ? (almost always 0, rarely 1, likely another boolean)                                                                                                                                                                                      |
 | ...     |
-| 50      | 1       | Checkbox "Remember playback position"                                                                                                                                                                                                   |
-| 51      | 1       | Checkbox "Show composer in all views"                                                                                                                                                                                                   |
-| 52      | 1       | Checkbox "Use work & movement", keeps associated information even if unchecked (only affects display)                                                                                                                                   |
-| 53      | 1       | ? (almost always 0, sometimes 1, likely another boolean)                                                                                                                                                                                |
+| 50      | 1       | Checkbox "Remember playback position"                                                                                                                                                                                                      |
+| 51      | 1       | Checkbox "Show composer in all views"                                                                                                                                                                                                      |
+| 52      | 1       | Checkbox "Use work & movement", keeps associated information even if unchecked (only affects display)                                                                                                                                      |
+| 53      | 1       | ? (almost always 0, sometimes 1, likely another boolean)                                                                                                                                                                                   |
 | ...     |
-| 55      | 1       | ? (usually 1, sometimes 0, likely another boolean)                                                                                                                                                                                      |
+| 55      | 1       | ? (usually 1, sometimes 0, likely another boolean, observed changing from 0 to 1 on first play of a song)                                                                                                                                  |
 | ...     |
-| 57      | 1       | ? (always 1, likely another boolean)                                                                                                                                                                                                    |
-| 58      | 1       | Purchased (boolean)                                                                                                                                                                                                                     |
-| 59      | 1       | Content rating                                                                                                                                                                                                                          | see below                                |
+| 57      | 1       | ? (always 1, likely another boolean)                                                                                                                                                                                                       |
+| 58      | 1       | Purchased (boolean)                                                                                                                                                                                                                        |
+| 59      | 1       | Content rating                                                                                                                                                                                                                             | see below                                |
 | ...     |
-| 62      | 1       | Suggestion flag                                                                                                                                                                                                                         | see below                                |
+| 62      | 1       | Suggestion flag                                                                                                                                                                                                                            | see below                                |
 | ...     |
-| 64      | 1       | ? (almost always 0, sometimes 1, likely another boolean)                                                                                                                                                                                |
-| 65      | 1       | Star rating (1 star = 20, 5 stars = 100)                                                                                                                                                                                                | 20                                       |
-| 66-72   | 1 each? | ? (see example values)                                                                                                                                                                                                                  | 0x80, 0x81, 0x1, 0x3                     |
-| 82      | 2       | Beats per minute                                                                                                                                                                                                                        | 144                                      |
-| 84      | 2       | Disc number of this track                                                                                                                                                                                                               | 1                                        |
-| 86      | 2       | Total movements (denominator for offset 88)                                                                                                                                                                                             | 5                                        |
-| 88      | 2       | Movement number of this track                                                                                                                                                                                                           | 3                                        |
-| 90      | 2       | Total discs (denominator for offset 84)                                                                                                                                                                                                 | 3                                        |
-| 92      | 4       | ? (almost always 0, but otherwise looks like a small signed value)                                                                                                                                                                      | 0, 255, -1, 136, 75, -128, 153, 89, -230 |
-| 96      | 4       | ? (not 0 only for purchased tracks, when not 0 looks like an ID, however not unique, can be shared between itma's in the same album, but not repeated elsewhere)                                                                        |
+| 64      | 1       | ? (almost always 0, sometimes 1, likely another boolean)                                                                                                                                                                                   |
+| 65      | 1       | Star rating (1 star = 20, 5 stars = 100)                                                                                                                                                                                                   | 20                                       |
+| 66-72   | 1 each? | ? (see example values)                                                                                                                                                                                                                     | 0x80, 0x81, 0x1, 0x3                     |
+| 82      | 2       | Beats per minute                                                                                                                                                                                                                           | 144                                      |
+| 84      | 2       | Disc number of this track                                                                                                                                                                                                                  | 1                                        |
+| 86      | 2       | Total movements (denominator for offset 88)                                                                                                                                                                                                | 5                                        |
+| 88      | 2       | Movement number of this track                                                                                                                                                                                                              | 3                                        |
+| 90      | 2       | Total discs (denominator for offset 84)                                                                                                                                                                                                    | 3                                        |
+| 92      | 4       | ? (almost always 0, but otherwise looks like a small signed value)                                                                                                                                                                         | 0, 255, -1, 136, 75, -128, 153, 89, -230 |
+| 96      | 4       | ? (not 0 only for purchased tracks, when not 0 looks like an ID, however not unique, can be shared between itma's in the same album, but not repeated elsewhere)                                                                           |
 | ...     |
-| 108     | 4?      | ? (always 1 in my library)                                                                                                                                                                                                              |
-| 112     | 4?      | ? (always 1 in my library)                                                                                                                                                                                                              |
-| 116     | 2       | Total tracks (denominator for offset 160)                                                                                                                                                                                               | 3                                        |
+| 108     | 4?      | ? (always 1 in my library)                                                                                                                                                                                                                 |
+| 112     | 4?      | ? (always 1 in my library)                                                                                                                                                                                                                 |
+| 116     | 2       | Total tracks (denominator for offset 160)                                                                                                                                                                                                  | 3                                        |
 | ...     |
-| 148     | 4       | Playback start position in milliseconds (0 for not set)                                                                                                                                                                                 | 1100                                     |
-| 152     | 4       | Playback stop position in ms (0 for not set)                                                                                                                                                                                            | 5000                                     |
+| 148     | 4       | Playback start position in milliseconds (0 for not set)                                                                                                                                                                                    | 1100                                     |
+| 152     | 4       | Playback stop position in ms (0 for not set)                                                                                                                                                                                               | 5000                                     |
 | ...     |
-| 160     | 2       | Track number                                                                                                                                                                                                                            | 2                                        |
+| 160     | 2       | Track number                                                                                                                                                                                                                               | 2                                        |
 | ...     |
-| 168     | 4       | Track year                                                                                                                                                                                                                              | 2015                                     |
-| 172     | 8       | Album ID                                                                                                                                                                                                                                |
-| 180     | 8       | Artist ID (see [iAma](#iama-artist) offset 16)                                                                                                                                                                                          |
-| 188     | 8       | Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                                                                                     |
+| 168     | 4       | Track year                                                                                                                                                                                                                                 | 2015                                     |
+| 172     | 8       | Album ID                                                                                                                                                                                                                                   |
+| 180     | 8       | Artist ID (see [iAma](#iama-artist) offset 16)                                                                                                                                                                                             |
+| 188     | 8       | Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                                                                                        |
 | ...     |
-| 220     | 8       | ? (not 0 only for songs purchased from Apple Music, repeated at 320 of the same section, 328 of a [track numerics](#track-numerics), values for tracks in the same album are close together and often consecutive, might be another ID) |
+| 220     | 8       | ? (not 0 only for songs purchased from Apple Music, repeated at 320 of the same section, 328 of a [track numerics](#track-numerics), values for tracks in the same album are close together and often consecutive, might be another ID)    |
 | ...     |
-| 244     | 4       | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                                                                         |
+| 244     | 4       | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                                                                            |
 | ...     |
-| 252     | 4       | ? (0x 00 00 03 00 for purchased songs, otherwise 0)                                                                                                                                                                                     |
-| 256     | 16      | Artwork UUID in [artwork.sqlite](#artworksqlite), whichever is the "default" (since you can attach multiple), 0 if none                                                                                                                 | 0xDDAE1C...                              |
-| 272     | 8       | Track ID again sometimes (why?)                                                                                                                                                                                                         |
-| 280     | 4       | ? (always the same value for tracks with the same title, no matter what album, tiny hash of the title? last byte always 0)                                                                                                              |
-| 284-308 | 4 each  | ? (always a multiple of 1000, many unrelated tracks share the same value — maybe an attribute of the audio format?)                                                                                                                     |
-| 308     | 4       | ? (always 6, 0, 11, 17, in descending order of frequency)                                                                                                                                                                               |
+| 252     | 4       | ? (0x 00 00 03 00 for purchased songs, otherwise 0)                                                                                                                                                                                        |
+| 256     | 16      | Artwork UUID in [artwork.sqlite](#artworksqlite), whichever is the "default" (since you can attach multiple), 0 if none                                                                                                                    | 0xDDAE1C...                              |
+| 272     | 8       | Track ID again sometimes (why?)                                                                                                                                                                                                            |
+| 280-308 | 4? each | ? (for 280, always the same value for tracks with the same title, no matter what album, tiny hash of the title? for all, always a multiple of 1000, observed changing from 0 to sonething else the first time a song is played or skipped) |
+| 308     | 4       | ? (always 6, 0, 11, 17, in descending order of frequency)                                                                                                                                                                                  |
 | ...     |
-| 320     | 8       | ? (see offset 220)                                                                                                                                                                                                                      |
-| 328     | 4       | ? (almost always 3, otherwise 5)                                                                                                                                                                                                        |
+| 320     | 8       | ? (see offset 220)                                                                                                                                                                                                                         |
+| 328     | 4       | ? (almost always 3, otherwise 5)                                                                                                                                                                                                           |
 | ...     |
-| 336     | 4       | Suggestion flag modified date, 0 if never                                                                                                                                                                                               |
+| 336     | 4       | Suggestion flag modified date, 0 if never                                                                                                                                                                                                  |
 | ...     |
-| 344     | 4       | ? (always 0 or 1)                                                                                                                                                                                                                       |
-| 348     | 4       | ? (always 0, 1, or 2)                                                                                                                                                                                                                   |
-| 352     | 4       | Date added of the most recently added track, only on that track, otherwise 0                                                                                                                                                            |
+| 344     | 4       | ? (always 0 or 1)                                                                                                                                                                                                                          |
+| 348     | 4       | ? (always 0, 1, or 2)                                                                                                                                                                                                                      |
+| 352     | 4       | Date added of the most recently added track, only on that track, otherwise 0                                                                                                                                                               |
 | ...     |
+
+Offset 42: The checkboxes this refers to can be seen by:
+
+- Checking "Settings" → "General" → "Show" → "Song list checkboxes"
+- Changing "View as" to "Songs" (the checkboxes do not appear in any other view, but other views will show the song faded out if disabled)
+
+This will also enable you to toggle the checkbox "match only checked items" on smart playlists. _This is stored with the reverse convention of other checkboxes: 0 = checked, 1 = unchecked (disabled)_. For songs that are disabled, they will never come up in the queue on their own, unless they are specifically played first (then they _can_ come up again when the songs repeat). Basically, this is a stronger version of "skip when shuffling" because it also applies when not shuffling. Additionally, for smart playlists with "match only checked items" enabled, the unchecked items are not only disabled from playing, but will not be included in the playlist at all.
 
 Offset 59 content rating enum values:
 
@@ -604,7 +654,7 @@ Grandchildren:
   - 0x5 = genre
   - 0x6 = kind - e.g. "MPEG audio file"
   - 0x7 = equalizer - always a UTF-16 string that looks like "#!#\<number\>#!#" where the number is different for each equalizer option, strange that this is not a single-byte enum
-  - 0x8 = comment
+  - 0x8 = comments
   - 0xB = URL - for local files, URL-encoded version of the file path "file:///C:/Users..."
   - 0xC = composer
   - 0xE = grouping
@@ -644,12 +694,16 @@ The length is always 364 bytes (the boma parent always has associated sections l
 
 | Offset | Length | Meaning                                                                                                                                                                           | Examples Value(s)                    |
 | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 0      | 4      | ? (a counter value incrementing by 2 from 1003, perhaps to avoid colliding with other signatures like string sections)                                                            | 1003                                 |
+| 0      | 4      | ? (a counter value incrementing by 2 from 1003, perhaps to avoid colliding with other signatures like string sections, observed changing on first play/skip of a song)            | 1003                                 |
 | ...    |
 | 8      | 8      | ? (an ID? doesn't appear elsewhere)                                                                                                                                               |
 | ...    |
+| 21     | 1      | ? (a bit flag? observed changing from 0 to 1 on first song play/skip)                                                                                                             |
+| 22     | 1      | ? (a bit flag? observed changing from 0 to 1 on first song play/skip)                                                                                                             |
+| ...    |
 | 60     | 4      | Sample rate in Hz (float32)                                                                                                                                                       | 44100.0 (0x 00 44 2C 47 20 33 50 4D) |
 | ...    |
+| 68     | 4      | File type                                                                                                                                                                         |
 | 72     | 2      | File folder count                                                                                                                                                                 |
 | 74     | 2      | Library folder count                                                                                                                                                              |
 | 76     | 2      | Number of artworks (you can attach more than one)                                                                                                                                 |
@@ -657,11 +711,14 @@ The length is always 364 bytes (the boma parent always has associated sections l
 | ...    |
 | 84     | 4      | Total size of all attached artworks (bytes)                                                                                                                                       | 234                                  |
 | 88     | 4      | Bit rate                                                                                                                                                                          |
+| 92     | 4      | Date added                                                                                                                                                                        |
 | ...    |
-| 112    | 4      | Date added                                                                                                                                                                        |
+| 108    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     |
+| 112    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     |
 | ...    |
+| 120    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     |
 | 124    | 4      | Custom lyrics tiny hash? (0 if no custom lyrics, otherwise, always the same value for the same custom lyrics, lyrics [only stored in audio file](#data-stored-in-the-audio-file)) |
-| 128    | 4      | Date added                                                                                                                                                                        |
+| 128    | 4      | Date modified                                                                                                                                                                     |
 | 132    | 4      | Normalization                                                                                                                                                                     |
 | 136    | 4      | Purchase date                                                                                                                                                                     |
 | 140    | 4      | Release date                                                                                                                                                                      |
@@ -674,6 +731,8 @@ The length is always 364 bytes (the boma parent always has associated sections l
 | 200    | 4      | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                   |
 | ...    |
 | 208    | 4      | _Album_ Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                       |
+| ...    |
+| 256    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     |
 | ...    |
 | 280    | 4      | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                   |
 | ...    |
@@ -696,14 +755,18 @@ Seems completely understood: X
 
 The length is always 52 bytes (the boma parent always has associated sections length 72).
 
-| Offset | Length | Meaning           | Examples Value(s) |
-| ------ | ------ | ----------------- | ----------------- |
-| 0      | 8      | Track ID          |
-| 8      | 4      | Last played date  |
-| 12     | 4      | Play count        |
+| Offset | Length | Meaning                                                                                                                           | Examples Value(s) |
+| ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| 0      | 8      | Track ID                                                                                                                          |
+| 8      | 4      | Last played date (0 for never, including if reset)                                                                                |
+| 12     | 4      | Play count (can be reset in the GUI)                                                                                              |
+| 16     | 4      | True play count (resetting in the GUI does not affect this count)                                                                 |
+| 20     | 4      | First ever played date (in UTC time zone) (also not affected by GUI reset)                                                        |
 | ...    |
-| 28     | 4      | Last skipped date |
-| 32     | 4      | Skip count        |
+| 28     | 4      | Last skipped date                                                                                                                 |
+| 32     | 4      | Skip count                                                                                                                        |
+| 36     | 4      | True skip count? (cannot find any way to reset the skip count in the GUI)                                                         |
+| 40     | 4      | ? (by analogy with the play data, I speculate that this might become nonzero if you were able to reset the skip count in the GUI) |
 | ...    |
 
 Grandparents: [itma](#itma-track)
@@ -768,14 +831,7 @@ One always gets a number of lpma entries for special built-in playlists. They do
 - "Downloaded" (songs purchased from Apple Music that are downloaded locally)
 - "Genius"
 
-Playlist folders are implemented as special playlists, along with the parent folder pointer ID at offset 50. Therefore, they do not get their own section type. Even more specifically, they are special kinds of smart playlists. In fact, their binary data are nearly identical to smart playlists (including subsection data) with rules that look like:
-
-- Match _any_ of the following rules:
-  - Playlist is \<1st playlist in folder\>
-  - Playlist is \<2nd playlist in folder\>
-  - etc.
-
-See [SLst (Smart Playlist Rules)](#slst-smart-playlist-rules) for more on this.
+Playlist folders are implemented as special playlists, along with the parent folder pointer ID at offset 50. See [SLst (Smart Playlist Rules List)](#slst-smart-playlist-rules-list) and its subsection [playlists](#playlists) for more on this.
 
 | Offset | Length | Meaning                                                                                                                      | Examples Value(s)  |
 | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -786,7 +842,7 @@ See [SLst (Smart Playlist Rules)](#slst-smart-playlist-rules) for more on this.
 | 16     | 4      | Number of tracks in playlist                                                                                                 | 10                 |
 | ...    |
 | 22     | 4      | Playlist creation date                                                                                                       | 3818534400         |
-| 26     | 1? 2?  | ? (observed changing from 4B to 3C when artwork and/or suggestion flag are changed for the first time)                       |
+| 26     | 1? 2?  | ? (observed changing when many other fields are changed)                                                                     |
 | 28     | 2?     | ? (always 0-3)                                                                                                               |
 | 30     | 8      | Playlist ID                                                                                                                  | 0x883E9012A290710E |
 | 38     | 1? 4?  | ? (always 1)                                                                                                                 | 0x883E9012A290710E |
@@ -812,17 +868,17 @@ See [SLst (Smart Playlist Rules)](#slst-smart-playlist-rules) for more on this.
 | ...    |
 | 280    | 8      | ? (an ID?)                                                                                                                   |
 | ...    |
-| 296    | 4?     | ? (usually 102, sometimes 0)                                                                                                 |
-| 300    | 4?     | ? (usually 8, sometimes 0)                                                                                                   |
+| 296    | 4?     | ? (usually 102, sometimes 0, sometimes 60, observed changing when artwork changed)                                           |
+| 300    | 4?     | ? (usually 8, sometimes 0, observed changing when artwork changed)                                                           |
 | ...    |
-| 316    | 4?     | ? (usually 1, sometimes 0)                                                                                                   |
-| 320    | 4?     | ? (0, 1, or 2)                                                                                                               |
+| 316    | 4?     | ? (usually 1, sometimes 0, observed changing when artwork changed)                                                           |
+| 320    | 4?     | ? (0, 1, or 2, observed changing when artwork changed)                                                                       |
 | 324    | 4      | Suggestion flag modified date, 0 if never                                                                                    | 3818534400         |
 | ...    |
-| 356    | 4      | ? (almost always 2, otherwise maybe a date for 3 smart playlists)                                                            |
+| 356    | 4      | ? (almost always 2, otherwise maybe a date for 3 smart playlists in my library)                                              |
 | ...    |
 
-Changing the playlist's view options updates the modified date, even though the view options are stored in the [preferences folder](#preferences-folder).
+Changing the playlist's view options updates the modified date, even though the view options are stored in the [preferences folder](#preferences).
 
 Offset 78 special playlist ID enum values:
 
@@ -844,10 +900,10 @@ Grandchildren:
 
 - 0xCE: [ipfa (Playlist Item)](#ipfa-playlist-item)
 - 0xCA: [Smart Playlist Options](#smart-playlist-options)
-- 0xC9: [SLst (Smart Playlist Rules)](#slst-smart-playlist-rules)
+- 0xC9: [SLst (Smart Playlist Rules List)](#slst-smart-playlist-rules-list)
 - [Strings](#string-section):
   - 0xC8 = playlist name
-  - 0xCd = generated artwork UUIDs plist (XML)
+  - 0xCD = "cover artwork recipe" plist (XML) (describes how the artwork for a playlist was automatically generated from its name — only regular playlists, not smart or folders)
 
 # ipfa (Playlist Item)
 
@@ -880,22 +936,20 @@ Seems completely understood: X
 
 The length is always 112 bytes (the boma parent always has associated sections length 132).
 
-| Offset | Length | Meaning                                                                           | Examples Value(s) |
-| ------ | ------ | --------------------------------------------------------------------------------- | ----------------- |
-| 0      | 1      | Checkbox "live updating"                                                          |
-| 1      | 1      | Checkbox to enable matching rules, keeps associated information even if unchecked |
-| 2      | 1      | Checkbox to enable limit                                                          |
-| 3      | 1      | Limit unit                                                                        | see below         |
-| 4      | 1      | Selection (ordering) method for limit                                             | see below         |
+| Offset | Length | Meaning                                                                                 | Examples Value(s) |
+| ------ | ------ | --------------------------------------------------------------------------------------- | ----------------- |
+| 0      | 1      | Checkbox "live updating"                                                                |
+| 1      | 1      | Checkbox to enable matching rules, keeps associated information even if unchecked       |
+| 2      | 1      | Checkbox to enable limit                                                                |
+| 3      | 1      | Limit unit                                                                              | see below         |
+| 4      | 1      | Selection (ordering) method for limit                                                   | see below         |
 | ...    |
-| 8      | 4      | Limit count                                                                       |
-| 12     | 1      | Checkbox "match only checked items"                                               |
-| 13     | 1      | Negate selection ordering method, see below                                       | 0, 1              |
+| 8      | 4      | Limit count                                                                             |
+| 12     | 1      | Checkbox "match only checked items" — see the notes about [itma](#itma-track) offset 42 |
+| 13     | 1      | Negate selection ordering method, see below                                             | 0, 1              |
 | ...    |
 
-The GUI enforces that either matching rules or the limit (offsets 1 and 2) must be enabled to save the smart playlist (otherwise it would not filter anything).
-
-To be able to toggle the checkbox for offset 12 in the GUI, must have "Settings" → "General" → "Show" → "Song list checkboxes" checked. The checkboxes this refers to can be seen by changing "View as" to "Songs" (not in any other view).
+The GUI enforces that either matching rules or the limit (offsets 1 and 2) must be enabled to save the smart playlist (otherwise it would just yield all songs).
 
 Offset 3 limit unit enum values:
 
@@ -921,13 +975,13 @@ Offset 4 selection method for limit enum values:
 - 0x15 = most recently added
   - ditto
 
-Offset 13 is always 0 for the other offset 4 values (but I wonder if they could be negated by setting the flag).
+Offset 13 is always 0 for the other offset 4 values (but I wonder if they could also be negated by setting the flag?).
 
 Grandparents: [lpma](#lpma-playlist)
 
 Parents: [boma](#boma-binary-object) (subtype 0xCA)
 
-# SLst (Smart Playlist Rules)
+# SLst (Smart Playlist Rules List)
 
 [Back to TOC](#table-of-contents)
 
@@ -935,14 +989,14 @@ Parents: [boma](#boma-binary-object) (subtype 0xCA)
 
 Seems completely understood: X
 
-The length is highly variable...? (Is this just because of nesting? Maybe always 72 bytes with subsections?)
+Length is always 136.
 
-| Offset | Length | Meaning                                  | Examples Value(s) |
-| ------ | ------ | ---------------------------------------- | ----------------- |
-| 0      | 4      | Section signature                        | SLst              |
-| 4      | 4?     | ? (_not the section length_)             | 0x00010001 (a?)       |
+| Offset | Length | Meaning                             | Examples Value(s) |
+| ------ | ------ | ----------------------------------- | ----------------- |
+| 0      | 4      | Section signature                   | SLst              |
+| 4      | 4?     | ? (_not the section length_)        | 0x00010001 (a?)   |
 | ...    |
-| 11     | 4      | Number of subsections                    |
+| 11     | 4      | Number of subsections               |
 | 15     | 1      | Match \_\_\_ of the following rules | see below         |
 | ...    |
 
@@ -958,30 +1012,219 @@ Parents: [boma](#boma-binary-object) (subtype 0xC9)
 Children:
 
 - self (nested "Match all/any of the following rules" lists)
-- [Text Match Rule](#text-match-rule)
-- todo
+- [Smart Playlist Rule](#smart-playlist-rule)
 
-# Text Match Rule
+# Smart Playlist Rule
 
 [Back to TOC](#table-of-contents)
 
-Length is...?
+Length is 56 + offset 54 value. For non-strings, it is always 124 (offset 54 is always 68).
 
-| Offset | Length   | Meaning                            | Examples Value(s) |
-| ------ | -------- | ---------------------------------- | ----------------- |
-| 0      | 4?       | Field to match                     | see below         |
-| 4      | 1        | Comparison method                  | see below         |
+**_<h1>All numbers and UTF-16 strings in this section type and its children are big-endian!!</h1>_**
+
+| Offset | Length                                       | Meaning                        | Examples Value(s) |
+| ------ | -------------------------------------------- | ------------------------------ | ----------------- |
+| 0      | 4                                            | Field to match                 | see below         |
+| 4      | 4                                            | Comparison method              | see below         |
 | ...    |
-| 55     | 2        | Length of string in bytes          |
-| 57     | variable | Criterion string encoded in UTF-16 |
+| 54     | 2                                            | Length starting from offset 56 |
+| 56     | variable for strings, 68 for everything else | Match value - see below        |
+
+Unfortunately, no, offset 0 does not match the related boma subtype in all cases (though it does in some).
+
+In all cases for offset 4, it looks like the bit 0x 02 00 00 00 is set to negate the comparison (but not all comparisons have a counterpart with this bit set, which makes me wonder if the program would accept these values).
+
+When offset 56 is not a string:
+
+- it seems to be broken into chunks of sizes 8, 16, 8, 16, 20 bytes respectively
+- each except the last is all 0x00 terminated by a 0x01 byte by default
+- the last is all 0 by default
+- each chunk is (usually) used for one parameter of the smart playlist rule (even if it isn't large enough to require all of its bytes)
+- unused chunks are left as the default values described here
+
+See below for full details on each offset depending on what type the match value is.
+
+Parents: [SLst](#slst-smart-playlist-rules-list)
+
+## Booleans
 
 Offset 0 field to match enum values:
 
-- 3 = album
-- 71 = album artist
-- todo
+- 0x 00 00 00 25 = "album artwork", i.e. has artwork (true) or not (false)
+- 0x 00 00 00 1D = "checked" (referred to as "disabled" at [itma](#itma-track) offset 42; _just like there, this uses reversed values compared to other booleans_)
+- 0x 00 00 00 1F = compilation
+- 0x 00 00 00 29 = purchased
 
 Offset 4 comparison method enum values:
+
+- 0x 00 00 00 01 = is true
+- 0x 02 00 00 01 = is false
+
+Offset 56 match value: not used (all default as described above)
+
+## Numerics
+
+Offset 0:
+
+- 0x 00 00 00 5A = album (star) rating
+- 0x 00 00 00 05 = bit rate in kbps
+- 0x 00 00 00 23 = BPM
+- 0x 00 00 00 18 = disc number
+- 0x 00 00 00 A1 = movement number
+- 0x 00 00 00 16 = plays
+- 0x 00 00 00 19 = (star) rating (of track)
+- 0x 00 00 00 06 = sample rate in Hz — given as integer at offset 56 (even though it's stored as a float in [track numerics](#track-numerics), so I can only assume "is" will never match those)
+- 0x 00 00 00 1C = size in MB
+- 0x 00 00 00 44 = skips
+- 0x 00 00 00 0D = time (song duration) in milliseconds (GUI only allows you to enter with precision of seconds — would more precise values work?)
+- 0x 00 00 00 0B = track number
+- 0x 00 00 00 07 = year (of track)
+
+Offset 4:
+
+- 0x 00 00 00 01 = is
+- 0x 02 00 00 01 = is not
+- 0x 00 00 00 10 = is greater than
+- 0x 00 00 00 40 = is less than
+- 0x 00 00 01 00 = is in the range
+
+Offset 56:
+
+- first 8-byte chunk is the first argument
+- second 8-byte chunk is zeroed out unless offset 4 is "is in the range", then it is the second argument
+- for star ratings, uses these values:
+  - 0 stars = -20 (0x FF FF FF FF FF FF FF EC)
+  - otherwise the usual 20 (0x 00 00 00 14) = 1 star up to 100 (0x 00 00 00 64) = 5 stars
+
+## Dates
+
+Offset 0:
+
+- 0x 00 00 00 10 = date added
+- 0x 00 00 00 0A = date modified
+- 0x 00 00 00 17 = last played
+- 0x 00 00 00 45 = last skipped
+
+Offset 4:
+
+- 0x 00 00 01 00 = is
+- 0x 02 00 01 00 = is not
+- 0x 00 00 00 10 = is after
+- 0x 00 00 00 40 = is before
+- 0x 00 00 02 00 = is in the last
+- 0x 02 00 02 00 = is not in the last
+- 0x 00 00 01 00 = is in the range (same as "is", the difference is in offset 56)
+
+Offset 56:
+
+The Apple Music GUI only allows selecting with a precision of 1 day. (It also seems to handle time zones poorly — the date you select may have shifted by 1 when you open the rules again.)
+
+- For "is" and "is not":
+  - first 8-byte chunk is set to midnight of the date chosen, e.g. 0x 00 00 00 00 E5 76 23 80 = 2025-12-28T00:00:00
+  - second 8-byte chunk is set to 23:59:59 of the same date, e.g. 0x 00 00 00 00 E5 77 74 FF = 2025-12-28T23:59:59
+  - this suggests it is actually using numeric "is in the range" and "is not in the range" internally (is "is not in the range" a valid value for other numerics even though it's not presented in the GUI?)
+  - would the Apple Music program accept more precise bounds edited in?
+- For "is after":
+  - both 8-byte chunks are set to 23:59:59 of the date chosen
+  - seems to be using "is greater than"
+- For "is before":
+  - both 8-byte chunks are set to midnight of the date
+  - seems to be using "is less than"
+- For "is in the last" and "is not in the last":
+  - both 8-byte chunks are filled in with 0x 2D AE repeated
+    - not sure what the significance of this value is
+    - I find it amusing that reading it aloud sounds a bit like "today", which might just be a coincidence
+  - first 16-byte chunk is split into 2 8-byte chunks:
+    - first half is the count, negated
+      - for example, for "is in the last 1 \<unit\>", you get 0x FF FF FF FF FF FF FF FF (-1)
+    - second half is the unit, in seconds
+      - 0x 00 00 00 00 00 01 51 80 = 86,400 seconds = 1 day → unit is days
+      - 0x 00 00 00 00 00 09 3a 80 = 604,800 seconds → weeks
+      - 0x 00 00 00 00 00 28 19 A0 = 2,628,000 seconds = 86,400 \* 365 / 12 → months
+    - this makes me wonder what would happen if you:
+      - edited in a positive count
+      - edited in some other unit
+- For "is in the range":
+  - first 8-byte chunk is set to midnight of the first date chosen, e.g. 0x 00 00 00 00 E5 76 23 80 = 2025-12-28T00:00:00
+  - second 8-byte chunk is set to 23:59:59 of the second date chosen, e.g. 0x 00 00 00 00 E5 77 74 FF = 2025-12-28T23:59:59
+  - if you select the same date for both bounds, close the rules list, and reopen it, the Apple Music GUI will show it as an "is" rule, proving that there is literally no difference!
+
+## Enums
+
+Offset 0:
+
+- Suggestion flags:
+  - 0x 00 00 00 9C = album ("album favorite")
+  - 0x 00 00 00 9A = track (just "favorite")
+- 0x 00 00 00 86 = cloud status
+- 0x 00 00 00 85 = location
+- 0x 00 00 00 3C = media kind
+
+Offset 4:
+
+- 0x 00 00 00 01 = is
+- 0x 02 00 00 01 = is not
+- for location, does not use the above:
+  - 0x 00 00 04 00 = is
+  - 0x 02 00 04 00 = is not
+
+Offset 56:
+
+- both 8-byte chunks are set identically to the enum value argument
+- Suggestion flags:
+  - set to value as described under [itma](#itma-track) (value of 1 is not used)
+- Cloud status:
+  - 2 = matched
+  - 1 = purchased (this is the order in the GUI — yes, it bothers me too that 1 is not first)
+  - 3 = uploaded
+  - 4 = ineligible
+  - 5 = removed
+  - 6 = error
+  - 7 = duplicate
+  - 8 = Apple Music
+  - 9 = no longer available
+  - 10 = not uploaded
+- Location:
+  - 1 = on computer
+  - 16 = iCloud
+- Media kind:
+  - 0x 01 = music
+  - 0x 20 = music video
+  - 0x 02 = movies
+  - 0x 40 = TV shows
+  - 0x 05 = podcasts
+  - 0x 08 = audio books
+  - 0x 10 00 00 = voice memoes
+  - 0x 01 00 00 = iTunes extras
+  - 0x 04 00 = home videos
+  - seems to me like they couldn't decide if they wanted to use a specific bit for each value or not (podcasts has 2 bits set)
+
+## Strings
+
+Offset 0:
+
+- 0x 00 00 00 03 = album
+- 0x 00 00 00 47 = album artist
+- 0x 00 00 00 04 = artist
+- 0x 00 00 00 37 = category
+- 0x 00 00 00 0E = comments
+- 0x 00 00 00 12 = composer
+- 0x 00 00 00 36 = description
+- 0x 00 00 00 08 = genre
+- 0x 00 00 00 27 = grouping
+- 0x 00 00 00 09 = kind
+- 0x 00 00 00 A0 = movement name
+- 0x 00 00 00 4F = sort album
+- 0x 00 00 00 51 = sort album artist
+- 0x 00 00 00 50 = sort artist
+- 0x 00 00 00 52 = sort composer
+- 0x 00 00 00 53 = sort show
+- 0x 00 00 00 4E = sort title
+- 0x 00 00 00 02 = title
+- 0x 00 00 00 59 = video rating
+- 0x 00 00 00 9F = work name
+
+Offset 4:
 
 - 0x 01 00 00 02 = contains
 - 0x 03 00 00 02 = does not contain
@@ -990,15 +1233,38 @@ Offset 4 comparison method enum values:
 - 0x 01 00 00 04 = begins with
 - 0x 01 00 00 08 = ends with
 
-This could be interpreted as a pair of byte flags, where for the first byte 01 is default, 03 negates the criterion, and each kind of comparison is a different value for the byte at the end.
+Offset 56: string encoded in UTF-16
 
-Parents: [SLst](#slst-smart-playlist-rules)
+## Playlists
+
+Playlist folders are actually implemented as a special kind of smart playlist. In fact, their binary data are nearly identical to smart playlists (including subsection data) with rules that look like:
+
+- Match _any_ of the following rules:
+  - Playlist is \<1st playlist in folder\>
+  - Playlist is \<2nd playlist in folder\>
+  - etc.
+
+See below for the differences.
+
+Offset 0: 0x 00 00 00 28
+
+Offset 4:
+
+- 0x 00 00 00 01 = is
+- 0x 02 00 00 01 = is not
+
+Offset 56:
+
+- first chunk (8 bytes) has its first 4 bytes replaced with the playlist ID _with bytes reversed compared to the usual order_ (matching how everything else is big-endian in here)
+- second chunk (16 bytes) also has the first 4 bytes as the same playlist ID _only if this smart playlist is actually a playlist folder_, otherwise 0
 
 # LPma (Padding?)
 
 [Back to TOC](#table-of-contents)
 
-"Apple Music library padding"? Appears once at the end of my library in an hsma by itself. Hasn't always been present, but a newly-created library also has it (as of December 2025).
+"Apple Music library padding"?
+
+Appears once at the end of my library in an hsma by itself. Hasn't always been present (not in a library from 3 months ago (September 2025)), but a newly-created library also has it (as of December 2025).
 
 | Offset | Length | Meaning           | Examples Value(s) |
 | ------ | ------ | ----------------- | ----------------- |
@@ -1010,11 +1276,11 @@ Parents: [SLst](#slst-smart-playlist-rules)
 
 Parents: [hsma](#hsma-section-header)
 
-# Relevant Accompanying Files
+# Accompanying Files
 
 [Back to TOC](#table-of-contents)
 
-These are files that I referred to somewhere above because they have some direct relationship to data inside the Library.musicdb file, briefly discussed for context on that relationship, not a comprehensive description of all files that accompany Library.musicdb.
+Notably, I do not have any other .musicdb files as mentioned by Gary Vollink ("Application.musicdb" and "Library Preferences.musicdb"). I can only speculate that they have been replaced by some or all of the below (but here we are still stuck with "Library.musicdb", hence this project).
 
 ## artwork.sqlite
 
@@ -1035,9 +1301,50 @@ table|item_to_artwork|item_to_artwork|8|CREATE TABLE item_to_artwork (item_id IN
 
 For [iAma](#iama-artist) offset 64, seems to be non-zero only when `location_type = 2` in the `artwork_source` table. The `location` is usually a URL such as "https://is1-ssl.mzstatic.com/image/thumb/Music\<number\>/v4/\<several path components with a UUID\>/\<some image name\>".
 
-## Preferences Folder
+## .itdb Files
 
-This folder contains .plist files which seem to be the view options for:
+.itdb files are sqlite databases. There are 2:
+
+One is Extras.itdb.
+
+```
+sqlite3 Extras.itdb
+SQLite version...
+Enter ".help" for usage hints.
+sqlite> select * from sqlite_schema;
+table|cddb|cddb|3|CREATE TABLE cddb (item_id INTEGER NOT NULL, media_id TEXT, mui_id TEXT, ufid TEXT, PRIMARY KEY (item_id))
+table|uits|uits|4|CREATE TABLE uits (item_pid INTEGER NOT NULL, data TEXT, PRIMARY KEY (item_pid))
+```
+
+However, my Extras.itdb is empty, so I don't know what it's for. (It's getting its modification date bumped along with everything else, so it's not unused.)
+
+The other is Genius.itdb, but it seems to encrypted so I have no idea what's in it. But given that I don't use Genius, I probably don't care about anything inside.
+
+## Preferences
+
+I'm guessing that the file Preferences.plist likely contains all top-level application settings, by which I mean:
+
+- everything in the Settings menu
+- which sidebar entries are shown
+- show downloaded items only
+- global equalizer
+- playback shuffle on/off
+- playback repeat off/one/all
+- playback volume
+
+At the very least changing them did not make any changes to the Library.musicdb file, other than modification dates (to the entire file and, for some reason, all playlists), with the following exceptions:
+
+- The media folder location
+  - see [plma](#plma-library-master) grandchildren [boma](#boma-binary-object) subtypes 0x1FD, 0x1F8, and 0x200
+  - I'm guessing this is included in Library.musicdb because it affects locations of music files
+- "Settings" → "General" → "Show" → "Songs list checkboxes"
+  - see [plma](#plma-library-master) offset 24 and [itma](#itma-track) offset 42
+  - I'm guessing this is included in Library.musicdb because it is related to data that is stored per-track (as opposed to other data that only affects playback)
+- "Settings" → "Files" → "Keep media folder organized"
+  - see [plma](#plma-library-master) offset 148
+  - I'm guessing this is included in Library.musicdb because it affects locations of music files (they might be moved when this is enabled)
+
+The folder "preferences" contains .plist files which seem to be the options for:
 
 - Playlists: files are called "Playlist\_\<playlist ID\>.plist", e.g. "Playlist_4018ae797d0cea3c.plist" — note that the bytes have been reversed compared to the Library.musicdb file, so this one has 0x 3c ea 0c... in its lpma section.
 - Albums: likewise "Album\_\<album ID\>.plist"
@@ -1046,6 +1353,7 @@ This folder contains .plist files which seem to be the view options for:
   - Artists.plist
   - RecentlyAddedMusic.plist
   - Songs.plist
+  - PlayQueueState.plist ("Playing Next"/"History" — not options, but the 2 lists of songs)
 
 # Data Stored in the Audio File
 
