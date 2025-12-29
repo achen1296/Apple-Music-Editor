@@ -18,38 +18,29 @@ CIPHER = AES.new(KEY, AES.MODE_ECB)
 DEFAULT_LIBRARY_FILE = Path(os.environ["USERPROFILE"]) / "Music" / "Apple Music" / "Apple Music Library.musiclibrary" / "Library.musicdb"
 
 
-def library_header_sizes(library: bytes, check_file_size=True):
-    """ `library` may be in either the file format or the raw format because the header is not modified as part of the transformation either way. """
-
-    assert library[:4] == b"hfma"
-
-    header_size = unpack_int(library, 4)
-
-    file_size = unpack_int(library, 8)
-    if check_file_size:
-        assert len(library) == file_size
-
-    data_size = file_size - header_size
-
-    encrypted_size = unpack_int(library, 84)
-    encrypted_size = data_size - (data_size % 16) if encrypted_size > file_size else encrypted_size
-
-    return header_size, encrypted_size
-
-
 def load_library_bytes(file: Path | str = DEFAULT_LIBRARY_FILE) -> bytes:
     # copied from https://github.com/jsharkey13/musicdb-to-json get_library_bytes
     # changes:
     # - renames
     # - type annotations
     # - hardcoded the encryption key
-    # - factored out library_header_sizes to also use in save (which has to not check the file size due to compression being part of the transformation)
     # - changed unpack_one to unpack_int
 
     with open(file, "rb") as f:
         file_bytes = f.read()
 
-    header_size, encrypted_size = library_header_sizes(file_bytes)
+    assert file_bytes[:4] == b"hfma"
+
+    header_size = unpack_int(file_bytes, 4)
+
+    file_size = unpack_int(file_bytes, 8)
+    assert len(file_bytes) == file_size
+
+    compressed_size = file_size - header_size
+
+    max_encrypted_size = unpack_int(file_bytes, 84)
+    assert max_encrypted_size % 16 == 0  # AES128-ECB block size
+    encrypted_size = compressed_size - (compressed_size % 16) if max_encrypted_size > file_size else max_encrypted_size
 
     # Some (but not all!) of the library data is encrypted. Apparently we decrypt the encrypted bytes:
     decrypted = b""
@@ -62,7 +53,7 @@ def load_library_bytes(file: Path | str = DEFAULT_LIBRARY_FILE) -> bytes:
 
 
 def save_library_bytes(
-    library: bytes,
+    raw_bytes: bytes,
     file: Path | str = DEFAULT_LIBRARY_FILE,
     *,
     make_backup=True,
@@ -76,15 +67,22 @@ def save_library_bytes(
     # straightforward inverse of `load_library_bytes`
     if raw:
         with open(file, "wb") as f:
-            f.write(library)
+            f.write(raw_bytes)
             # note that I haven't bothered to update the file size in this case because that depends on the encryption/compression process
     else:
-        header_size, encrypted_size = library_header_sizes(library, check_file_size=False)
+        assert raw_bytes[:4] == b"hfma"
 
-        header = library[:header_size]
-        rest = library[header_size:]
+        header_size = unpack_int(raw_bytes, 4)
 
-        compressed = zlib.compress(rest, 1)  # experimentally, this is the compression level that Apple Music uses
+        header = raw_bytes[:header_size]
+        rest = raw_bytes[header_size:]
+
+        compressed = zlib.compress(rest, 1)  # experimentally, this is the compression level that Apple Music
+        compressed_size = len(compressed)
+
+        max_encrypted_size = unpack_int(raw_bytes, 84)
+        assert max_encrypted_size % 16 == 0 # AES128-ECB block size
+        encrypted_size = compressed_size - (compressed_size % 16) if max_encrypted_size > compressed_size else max_encrypted_size
 
         encrypted = CIPHER.encrypt(compressed[:encrypted_size])
         rest_of_compressed = compressed[encrypted_size:]
