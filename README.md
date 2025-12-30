@@ -4,7 +4,7 @@ Editor for Apple Music's Library.musicdb file.
 
 Based on:
 
-- https://home.vollink.com/gary/playlister/musicdb.html
+- https://home.vollink.com/gary/playlister/musicdb.html (Gary Vollink) and everyone credited by him at the bottom
 - https://github.com/rinsuki/musicdb2sqlite
 - https://github.com/jsharkey13/musicdb-to-json (also copied a small amount of code from here, see the comments in my code for details)
 
@@ -116,7 +116,7 @@ Interpreting unknown values:
   - a value that has several ff bytes at the end is likely a negative value of low magnitude represented as a signed integer
 - a value with dense bits like 0x cd 3a 45 18 is usually some kind of ID or hash
 - with one exception to the previous: dates are expressed in seconds since 1904-01-01T00:00 (former MacOS epoch), therefore values in the high 3 billions (or higher if you are reading this in the 2030s and beyond) should be suspected as dates
-- try throwing numbers (in decimal) into a web search "site:music.apple.com \<number\>" if you think it might be an Apple Music store ID
+- try throwing numbers (in decimal) into a web search "site:music.apple.com \<number\>" if you think it might be an Apple Music store ID (although I think I found all of those already)
 
 # General Format Notes
 
@@ -129,7 +129,7 @@ Interpreting unknown values:
 - In the tables below, an offset "..." means all of the offsets in between the previous and next entries (or until the end of the section if at the end) were always 0 in my library (unless I missed any).
   - It is tempting to assume that these are just reserved empty space — but this is not always the case! As I discovered, there are many cases where 0 is the default value indicating that some feature is not used, a pointer is not assigned, etc., and your library file will always contain 0 there if you happen to have never used that feature! For example, did you know that you can favorite artists, albums, and playlists as well as tracks? Neither did I until after exploring every nook and cranny of the GUI for this project, and all of those bytes were 0s until I found them.
 - "(a?)" is shorthand for "(always?)", speculating that an offset always has the value given in the example because it is the only one I have ever seen (this is not given comprehensively, I may have missed some cases).
-  - In principle, section lengths could be different between sections of the same type. In practice, however, they are always the same for a certain section type, with the exception of the badly-behaved [boma](#boma-binary-object) (nice alliteration ;) children. Therefore I will not mark these with (a?) and you may assume the example value is the one and only value that ever appears.
+  - In principle, section lengths could be different between sections of the same type. In practice, however, they are always the same for a certain section type, _with the only exceptions being sections containing string data_. Therefore I will not mark these with (a?) and you may assume the example value is the one and only value that ever appears other than this exception.
   - Obviously the section signature will also always be the same for a certain section type, almost by definition.
 
 # Encryption and Compression
@@ -140,7 +140,7 @@ To get what I refer to as the "raw" library bytes from the file as saved on disk
 - The crypt size is:
   - The file size if file size \< max crypt size in hfma
   - Otherwise file size - outer hfma length - ((file size - outer hfma length) % 16)
-  - The max crypt size always seems to be 102400, I was not able to find any other values accepted by the Apple Music program (not that there's any reason to use a different one)
+  - The max crypt size always seems to be 102400, I was not able to find any other values accepted by the Apple Music program (not that there's any reason to use a different one, so I didn't search that hard)
 - Starting after the outer hfma, decrypt \<crypt size\> bytes using AES128-ECB and the encryption key (see code)
 - Concatenate the remaining bytes in the file after the encrypted portion onto the decrypted bytes
 - Decompress the result with zlib
@@ -154,6 +154,13 @@ The remainder of this document describes the raw library bytes.
 [Back to TOC](#table-of-contents)
 
 The file is divided into what most have previously called "sections". Sections may have subsections, creating a tree structure (so I also call them "children"). If section A has subsections B and C, and B has subsections D and E, then they will appear in the file in the order A B D E C. In my code, I treat the outer [hfma](#hfma-file-header) section as the tree's root (thus its class name is `Library`, and the class name `hfma` is used only for the inner one).
+
+In almost all cases, the order of the children does not matter because one of the following is true:
+
+- there is only one child
+- the data inside the subsection identifies it, e.g. section signature or subtype
+- the GUI uses other data inside to sort at runtime, but saves data in some arbitrary order
+- [one exception](#ipfa-playlist-item)
 
 Almost all sections begin with 8 bytes that have the same meaning.
 
@@ -276,6 +283,8 @@ For children of boma, this means that all offsets listed on Gary Vollink's page 
 
 From a practical point of view this doesn't change that much because you will often still need the associated sections length to make sure to read the correct amount of subsection data, and the subtype to know how to interpret it, but at least it explains the "always 0x14", and makes the pattern break less strange in that it is complete, dramatic, and more obviously intentional rather than seemingly very subtle for no good reason.
 
+In almost all cases, a boma section's subtype should not be shared by any of its siblings ([one known exception](#ipfa-playlist-item)). If there are somehow 2 or more (due to external tampering or [a bug](#track-numerics)), only the first one gets used by Apple Music, and it may or may not discard the others.
+
 Parents:
 
 - [plma](#plma-library-master)
@@ -297,7 +306,7 @@ Seems completely understood: X
 
 | Offset | Length   | Meaning                                                                                        | Examples Value(s) |
 | ------ | -------- | ---------------------------------------------------------------------------------------------- | ----------------- |
-| 0      | 4        | Section signature, 2 for UTF-16 and 1 for UTF-8                                                | 1, 2              |
+| 0      | 4        | Section signature, 1 for UTF-16 and 2 for UTF-8                                                | 1, 2              |
 | 4      | 4        | _String_ length, _not_ section length — only measured starting from offset 16                  | 100               |
 | 8      | 4        | ? (observed changing for album artist, composer, album, genre the first time a song is played) |
 | ...    |
@@ -367,12 +376,12 @@ Children: [boma](#boma-binary-object)
 Grandchildren:
 
 - 0x1F6 = ? (contains an ID? not repeated anywhere)
-- 0x1FF = ? (contains 2 copies of library ID in my library) (_note that this appears to have a subsection with a UTF-16 string signature but it isn't one_)
+- 0x1FF = ? (contains 2 copies of library ID in my library) (_note that this appears to have a subsection with the signature for a UTF-16 string signature but it isn't one_)
 - [Strings](#string-section):
   - boma subtype 0x1F8 = media folder URI ("file://localhost/C:/...")
 - [Raw Strings](#raw-string)
-  - 0x1FC = imported iTunes .itl file
-  - 0x1FD = media folder path (_encoded as UTF-16_)
+  - 0x1FC = imported iTunes .itl file (UTF-8)
+  - 0x1FD = media folder path (UTF-16)
   - 0x200 = exactly the same as 0x1FD
 
 # lama (Album List)
@@ -514,7 +523,7 @@ Grandchildren:
   - 0x190 = artist name
   - 0x191 = artist name sort
 - [Raw Strings](#raw-string)
-  - 0x192 = artwork URL plist (XML)
+  - 0x192 = artwork URL plist (XML) (UTF-8)
 
 # ltma (Track List)
 
@@ -601,7 +610,7 @@ Seems completely understood: X
 | 160     | 2       | Track number                                                                                                                                                                                                                               | 2                                        |
 | ...     |
 | 168     | 4       | Track year                                                                                                                                                                                                                                 | 2015                                     |
-| 172     | 8       | Album ID                                                                                                                                                                                                                                   |
+| 172     | 8       | Album ID (see [iama](#iama-album) offset 16)                                                                                                                                                                                               |
 | 180     | 8       | Artist ID (see [iAma](#iama-artist) offset 16)                                                                                                                                                                                             |
 | 188     | 8       | Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                                                                                        |
 | ...     |
@@ -705,7 +714,7 @@ Seems completely understood: X
 
 The length is always 364 bytes (the boma parent always has associated sections length 384).
 
-I have observed that there can be 2 of these under the same [itma](#itma-track) after a purchased song is downloaded. However, _I think this is a bug_, because it seems to prepend an entire new one along with a bunch of other data, leaving the second (original) one nearly unchanged in the process. I assume the extra ones then go undetected and unused, because Apple Music made no complaints after I removed them myself.
+I discovered that there can be 2 of the [track numerics](#track-numerics) section under the same [itma](#itma-track) after a purchased song is downloaded. However, _I think this is a bug_, because it seems to prepend an entire new one along with a bunch of other data, leaving the second (original) one nearly unchanged in the process. I assume the extra ones then go undetected and unused, because Apple Music made no complaints after I removed them myself. Most conclusively, I decided to push the limits the other way by adding 100 duplicates of the subsection, then I changed some known data in the Apple Music GUI (specifically I changed offset 84 by adding more artworks), and only the first one got changed.
 
 | Offset | Length | Meaning                                                                                                                                                                           | Examples Value(s)                                          |
 | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -811,7 +820,7 @@ Parents: [boma](#boma-binary-object) (subtype 0x17)
 
 Seems completely understood: X
 
-The length is always...? (I don't have any of these in my library to check.)
+The length is always 72? (I don't have any of these in my library to check, but Gary Vollink's table ends at offset 68 with size 4 without a "..." after.)
 
 | Offset | Length | Meaning               | Examples Value(s) |
 | ------ | ------ | --------------------- | ----------------- |
@@ -819,7 +828,6 @@ The length is always...? (I don't have any of these in my library to check.)
 | 4      | 4      | Horizontal resolution | 640               |
 | ...    |
 | 68     | 4      | Framerate?            | 24                |
-| ...    |
 
 Grandparents: [itma](#itma-track)
 
@@ -935,6 +943,7 @@ Grandchildren:
 - 0xC9: [SLst (Smart Playlist Rules List)](#slst-smart-playlist-rules-list)
 - [Strings](#string-section):
   - 0xC8 = playlist name
+- [Raw Strings](#raw-string)
   - 0xCD = "cover artwork recipe" plist (XML) (describes how the artwork for a playlist was automatically generated from its name — only regular playlists, not smart or folders)
 
 # ipfa (Playlist Item)
@@ -945,16 +954,19 @@ Seems completely understood: X
 
 "Apple ? playlist item"?
 
-One [lpma](#lpma-playlist) can have many ipfa grandchilldren. This is the only [boma](#boma-binary-object) subtype where this is possible — in all other cases, the boma subtype is different from all other siblings.
+One [lpma](#lpma-playlist) can have many ipfa grandchilldren. This is the only (known) [boma](#boma-binary-object) subtype where this is possible.
 
-| Offset | Length | Meaning                                             | Examples Value(s)                         |
-| ------ | ------ | --------------------------------------------------- | ----------------------------------------- |
-| 0      | 4      | Section signature                                   | ipfa                                      |
-| 4      | 4      | Section length                                      | 68 (always even though it's a boma child) |
+Another way this kind of section is unique is that the order they are saved in actually matters: it determines the playlist order of the songs.
+
+| Offset | Length | Meaning                                             | Examples Value(s) |
+| ------ | ------ | --------------------------------------------------- | ----------------- |
+| 0      | 4      | Section signature                                   | ipfa              |
+| 4      | 4      | Section length                                      | 68                |
 | 8      | 4      | ? (always a small number, different for each entry) |
 | 12     | 8      | ipfa ID                                             |
 | 20     | 8      | Track ID                                            |
 | ...    |
+| 40     | 4?     | ?                                                   | 139, 140, 141     |
 | 44     | 8      | ipfa ID again (if last track in playlist?)          |
 | ...    |
 
