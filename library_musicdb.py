@@ -46,9 +46,11 @@ def load_library_bytes(file: Path | str = DEFAULT_LIBRARY_FILE) -> bytes:
     decrypted = b""
     if encrypted_size > 0:
         decrypted = CIPHER.decrypt(file_bytes[header_size:header_size + encrypted_size])
+
     # Then we just append on the rest of the file (which is not encrypted) and decompress:
     raw_bytes = zlib.decompress(decrypted + file_bytes[header_size + encrypted_size:])
     raw_bytes = file_bytes[:header_size] + raw_bytes
+
     return raw_bytes
 
 
@@ -81,7 +83,7 @@ def save_library_bytes(
         compressed_size = len(compressed)
 
         max_encrypted_size = unpack_int(raw_bytes, 84)
-        assert max_encrypted_size % 16 == 0 # AES128-ECB block size
+        assert max_encrypted_size % 16 == 0  # AES128-ECB block size
         encrypted_size = compressed_size - (compressed_size % 16) if max_encrypted_size > compressed_size else max_encrypted_size
 
         encrypted = CIPHER.encrypt(compressed[:encrypted_size])
@@ -98,13 +100,6 @@ def save_library_bytes(
             f.write(rest_of_compressed)
 
 
-SECTION_CLASSES: dict[bytes, Type["Section"]] = {}
-
-
-def register_section_class(cls: Type["Section"]):
-    SECTION_CLASSES[bytes(cls.__name__, "ascii")] = cls
-
-
 def datetime_to_int(d: datetime | None = None):
     # +2082844800 to convert Unix epoch (Jan 1 1970) to Mac epoch (Jan 1 1904)
     if d is None:
@@ -115,6 +110,13 @@ def datetime_to_int(d: datetime | None = None):
 def int_to_datetime(i: int):
     i -= 2082844800
     return datetime.fromtimestamp(i, timezone.utc)
+
+
+SECTION_CLASSES: dict[bytes, Type["Section"]] = {}
+
+
+def register_section_class(cls: Type["Section"]):
+    SECTION_CLASSES[bytes(cls.__name__, "ascii")] = cls
 
 
 class Section:
@@ -129,7 +131,7 @@ class Section:
     offset_int_sizes: defaultdict[str, int] = defaultdict(lambda: 4)
     """ Assume size 4 bytes if not specified (since that is the most common) """
     expected_subsections: set[bytes] = set()
-    check_signature = True  # only disabled for Library which has hfma signature
+    check_signature = True
 
     def __init__(self, data: BytesIO, check_signature=True):
         self._signature = None
@@ -214,7 +216,7 @@ class Section:
     @property
     def total_size(self):
         """ Size of this section and all subsections, referred to as "associated sections length" on vollink """
-        if self.offsets["total_size"] >= 0 and any(s._changed_size for s in self):
+        if self.offsets["total_size"] >= 0 and any(s._changed_size or s._subsection_count_changed for s in self):
             total_size = sum(s.size for s in self)
             self.set_int("total_size", total_size)
             return total_size
@@ -781,9 +783,9 @@ class lpma(DataContainerSection):
         0xc9: {},   # todo
     }
     numeric_data_sizes = defaultdict(lambda: defaultdict(lambda: 4), {
-        0xce: defaultdict(lambda: 4, {}), # todo
-        0xca: defaultdict(lambda: 4, {}), # todo
-        0xc9: defaultdict(lambda: 4, {}), # todo
+        0xce: defaultdict(lambda: 4, {}),  # todo
+        0xca: defaultdict(lambda: 4, {}),  # todo
+        0xc9: defaultdict(lambda: 4, {}),  # todo
     })
 
 
