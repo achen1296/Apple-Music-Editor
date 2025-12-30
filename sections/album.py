@@ -1,4 +1,5 @@
 from collections import defaultdict
+from enum import IntEnum
 
 from .binary_object import DataContainerSection, String, boma
 from .section import Section
@@ -19,14 +20,24 @@ class iama(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
-        "album_id": 16,
-        "first_track_id": 32,
-        "last_played": 100,
+        "id_album": 16,
+        "id_first_track": 32,
+        "star_rating": 40,
+        "star_rating_inheritance": 41,
+        "suggestion_flag": 42,
+        "id_album_2": 64,
+        "date_modified_suggestion_flag": 96,
+        "date_last_played": 100,
+        "id_apple_music_album": 104,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
-        "album_id": 8,
-        "first_track_id": 8,
+        "id_album": 8,
+        "id_first_track": 8,
+        "star_rating": 1,
+        "star_rating_inheritance": 1,
+        "suggestion_flag": 1,
+        "id_album_2": 8,
     })
 
     data_subtypes = {
@@ -35,6 +46,14 @@ class iama(DataContainerSection):
         "artist": 0x12d,
         "album_artist": 0x12e,
     }
+    data_subtype_aliases = {
+        "title",
+    }
+
+
+class StarRatingInheritance(IntEnum):
+    DIRECT = 0x1
+    INHERITED = 0x20
 
 
 class lama(Section):

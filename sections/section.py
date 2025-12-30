@@ -36,6 +36,8 @@ class Section:
     }
     offset_int_sizes: defaultdict[str, int] = defaultdict(lambda: 4)
     """ Assume size 4 bytes if not specified (since that is the most common) """
+    offset_aliases:set[str] = set()
+    """ Added offset names to this set to prevent repeating the same offset in `as_dict`. """
 
     def __init__(self, data: BytesIO, size_hint: int | None = None):
         """ `size_hint` is only needed if there is neither a size offset nor a `fixed_size` class attribute given, and should come from the parent's `self.get_int("total_size") - self.get_int("size")` (this assumes there is only one child section). This is only supposed to be used for certain `boma` children which lack both a size offset and a fixed size, and as a last resort for unknown section types.
@@ -216,6 +218,7 @@ class Section:
         return {
             offset_name: self.get_int(offset_name)
             for offset_name in self.offsets
+            if offset_name not in self.offset_aliases
         }
 
     def __str__(self):

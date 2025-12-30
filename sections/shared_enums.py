@@ -6,6 +6,7 @@ class SuggestionFlag(IntEnum):
     DISLIKE = 3
     NOT_LOVE_OR_DISLIKE = 0
 
+
 class StarRating(IntEnum):
     STARS_0 = 0
     STARS_1 = 20

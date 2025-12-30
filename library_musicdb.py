@@ -111,7 +111,7 @@ class Library(Section):
         "file_format_major_version": 12,
         "file_format_minor_version": 14,
         # "apple_music_version": 16, # this is a string which would currently break the code expecting ints only other than in boma
-        "library_id": 48,
+        "id_library": 48,
         "musicdb_file_type": 56,
         "song_count": 68,
         "playlist_count": 72,
@@ -120,14 +120,14 @@ class Library(Section):
         # "max_crypt_size": 84, # handled in load/save_library_bytes
         "library_time_offset": 88,
         "date_modified": 100,
-        "library_id_itunes": 108,
+        "id_itunes_library": 108,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
         "file_format_major_version": 2,
         "file_format_minor_version": 2,
-        "library_id": 8,
-        "library_id_itunes": 8,
+        "id_library": 8,
+        "id_itunes_library": 8,
     })
     check_signature = False  # hfma signature is registered for the inner one
 

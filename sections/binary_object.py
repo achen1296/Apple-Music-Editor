@@ -55,6 +55,11 @@ class RawStringUTF8(RawString):
 class RawStringUTF16(RawString):
     encoding = "utf_16_le"
 
+RawStringUTF16LE = RawStringUTF16
+
+class RawStringUTF16BE(RawString):
+    encoding = "utf_16_be"
+
 
 AnyString = String | RawString
 
@@ -78,7 +83,9 @@ class DataContainerSection(Section):
     """ Add methods for boma subsections """
 
     data_subtypes: dict[str, int] = {}
-    """ Subtype name -> subtype number """
+    """ Used to assign a name to subtype numbers for readability purposes. """
+    data_subtype_aliases: set[str] = set()
+    """ Added data subtype names to this set to prevent repeating the same offset in `as_dict`. """
 
     def data_subsection_of_subtype(self, subtype: str | int):
         if isinstance(subtype, str):
@@ -124,6 +131,8 @@ class DataContainerSection(Section):
     def as_dict(self):
         d = super().as_dict()
         for subtype_name in self.data_subtypes:
+            if subtype_name in self.data_subtype_aliases:
+                continue
             try:
                 subsection = self.data_subsection_of_subtype(subtype_name)
             except KeyError:

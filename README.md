@@ -38,6 +38,7 @@ So far I have successfully edited simple things like the play count of a track, 
 ---
 
 - [General Notes](#general-format-notes)
+- [Consistent Naming of Fields](#consistent-naming-of-fields)
 - [Encryption and Compression](#encryption-and-compression)
 - [Section Structure](#section-structure)
 
@@ -131,6 +132,32 @@ Interpreting unknown values:
 - "(a?)" is shorthand for "(always?)", speculating that an offset always has the value given in the example because it is the only one I have ever seen (this is not given comprehensively, I may have missed some cases).
   - In principle, section lengths could be different between sections of the same type. In practice, however, they are always the same for a certain section type, _with the only exceptions being sections containing string data_. Therefore I will not mark these with (a?) and you may assume the example value is the one and only value that ever appears other than this exception.
   - Obviously the section signature will also always be the same for a certain section type, almost by definition.
+
+# Consistent Naming of Fields
+
+Inside the code, I use these conventions for naming fields (offsets) to keep things consistent:
+
+- in general, start with the data type
+- for dates, always start with "date\_"
+  - then always follow with "created", "added", "modified", "last\_..." as appropriate
+  - then, if applicable, what has been modified (e.g. "date_modified_suggestion_flag", whereas just "date_modified" means the date when whatever this is a field of as a whole has been modified)
+- for checkboxes, always start with "checkbox\_"
+  - there are other booleans, this is only if the GUI presents a checkbox to the user
+- some fields have both a number and a total, e.g. the disc number and disc total, these will be named "...\_number" and "...\_total" respectively, e.g. "disc_number" and "disc_total"
+  - likewise for counts
+- for sorting fields, "sort\_" goes first
+- for UUIDs, [Python `struct`](https://docs.python.org/3/library/struct.html) doesn't have a format specifier for 16 bytes, therefore I split them into 2 8-byte fields "uuid_1\_..." and "uuid_2\_..."
+- for all IDs, "id\_" goes first
+  - for IDs that are in the Apple Store, "id_apple_music\_..."
+  - for IDs from iTunes, "id_itunes\_..."
+- use the word "size" for byte lengths
+  - "total_size" means of a sum of multiple sizes
+- "plist\_" for XML plist strings
+- some specific, recurring fields:
+  - "suggestion_flag" for favorite/suggest less
+  - "star_rating" for star ratings (as opposed to e.g. "content_rating", less confusing than just "rating")
+
+For some fields I provide alias names where either can be used, e.g. "name" and "title".
 
 # Encryption and Compression
 
@@ -491,7 +518,7 @@ Seems completely understood: X
 | 4      | 4      | Section length                                                                                                                                                 | 132                                    |
 | 8      | 4      | Associated sections length                                                                                                                                     | 1234                                   |
 | 12     | 4      | Number of subsections                                                                                                                                          | 5                                      |
-| 16     | 8      | Artist ID (local)                                                                                                                                              | 0xAAE367957FF01CEC                     |
+| 16     | 8      | Artist ID                                                                                                                                                      | 0xAAE367957FF01CEC                     |
 | 24     | 4      | ?                                                                                                                                                              | 2 (a?)                                 |
 | 28     | 4      | ?                                                                                                                                                              | 1 (a?)                                 |
 | ...    |
@@ -612,7 +639,7 @@ Seems completely understood: X
 | 168     | 4       | Track year                                                                                                                                                                                                                                 | 2015                                     |
 | 172     | 8       | Album ID (see [iama](#iama-album) offset 16)                                                                                                                                                                                               |
 | 180     | 8       | Artist ID (see [iAma](#iama-artist) offset 16)                                                                                                                                                                                             |
-| 188     | 8       | Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                                                                                        |
+| 188     | 4       | Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                                                                                        |
 | ...     |
 | 220     | 8       | ? (not 0 only for songs purchased from Apple Music, repeated at 320 of the same section, 328 of a [track numerics](#track-numerics), values for tracks in the same album are close together and often consecutive, might be another ID)    |
 | ...     |
@@ -992,7 +1019,7 @@ The length is always 112 bytes (the boma parent always has associated sections l
 | ...    |
 | 8      | 4      | Limit count                                                                             |
 | 12     | 1      | Checkbox "match only checked items" — see the notes about [itma](#itma-track) offset 42 |
-| 13     | 1      | Negate selection ordering method, see below                                             | 0, 1              |
+| 13     | 1      | Negate ordering method, see below                                                       | 0, 1              |
 | ...    |
 
 The GUI enforces that either matching rules or the limit (offsets 1 and 2) must be enabled to save the smart playlist (otherwise it would just yield all songs).
@@ -1037,19 +1064,22 @@ Seems completely understood: X
 
 Length is always 136.
 
-| Offset | Length | Meaning                             | Examples Value(s) |
-| ------ | ------ | ----------------------------------- | ----------------- |
-| 0      | 4      | Section signature                   | SLst              |
-| 4      | 4?     | ? (_not the section length_)        | 0x00010001 (a?)   |
-| ...    |
-| 11     | 4      | Number of subsections               |
-| 15     | 1      | Match \_\_\_ of the following rules | see below         |
+**_<h1>All numbers in this section type are big-endian!!</h1>_**
+
+| Offset | Length | Meaning                                           | Examples Value(s) |
+| ------ | ------ | ------------------------------------------------- | ----------------- |
+| 0      | 4      | Section signature                                 | SLst              |
+| 4      | 4?     | ? (_not the section length_)                      | 0x00010001 (a?)   |
+| 8      | 4      | Number of subsections                             |
+| 12     | 4      | Match \_\_\_ of the following rules (conjunction) | see below         |
 | ...    |
 
-Offset 15 "match \_\_\_ of the following rules" enum values:
+Offset 15 conjunction enum values:
 
 - 0 = all
 - 1 = any
+
+I refer to this as "conjunction", as in grammatical, not logical conjunction (which is "and", i.e. "all" in this case).
 
 Grandparents: [lpma](#lpma-playlist)
 
@@ -1150,8 +1180,8 @@ Offset 0:
 
 - 0x 00 00 00 10 = date added
 - 0x 00 00 00 0A = date modified
-- 0x 00 00 00 17 = last played
-- 0x 00 00 00 45 = last skipped
+- 0x 00 00 00 17 = date last played
+- 0x 00 00 00 45 = date last skipped
 
 Offset 4:
 
@@ -1242,7 +1272,7 @@ Offset 56:
   - 0x 40 = TV shows
   - 0x 05 = podcasts
   - 0x 08 = audio books
-  - 0x 10 00 00 = voice memoes
+  - 0x 10 00 00 = voice memos
   - 0x 01 00 00 = iTunes extras
   - 0x 04 00 = home videos
   - seems to me like they couldn't decide if they wanted to use a specific bit for each value or not (podcasts has 2 bits set)

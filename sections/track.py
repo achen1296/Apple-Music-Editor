@@ -1,4 +1,5 @@
 from collections import defaultdict
+from enum import IntEnum
 
 from .binary_object import DataContainerSection, RawStringUTF8, String, boma
 from .section import Section
@@ -15,13 +16,16 @@ class TrackNumerics(Section):
         "artwork_total_size": 84,
         "bit_rate": 88,
         "date_added": 92,
-        "lyrics_hash": 124,
         "date_modified": 128,
         "normalization": 132,
-        "purchase_date": 136,
-        "release_date": 140,
+        "date_purchased": 136,
+        "date_released": 140,
         "song_duration": 156,
+        "id_apple_music_album": 160,
+        "id_apple_music_artist": 168,
+        "id_apple_music_album_artist": 208,
         "file_size": 296,
+        "id_apple_music_song": 304,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         "file_folder_count": 2,
@@ -34,12 +38,13 @@ class TrackPlaysSkips(Section):
     fixed_size = 52
     offsets = {
         # no **Section.offsets: does not have a typical size offset
-        "track_id": 0,
-        "last_played": 8,
-        "plays": 12,
+        "id_track": 0,
+        "date_last_played": 8,
+        "play_count": 12,
         "true_play_count": 16,
-        "last_skipped": 28,
-        "skips": 32,
+        "date_first_played": 20,
+        "date_last_skipped": 28,
+        "skip_count": 32,
         "true_skip_count": 36,
     }
 
@@ -74,59 +79,70 @@ class itma(DataContainerSection):
     offsets = {
         **Section.offsets,
         "subsection_count": 12,
-        "track_id": 16,
-        "skip_when_shuffling": 30,
-        "album_is_compilation": 38,
-        "disabled": 42,
-        "remember_playback_position": 50,
-        "show_composer_in_all_views": 51,
-        "use_work_and_movement": 52,
+        "id_track": 16,
+        "checkbox_skip_when_shuffling": 30,
+        "checkbox_album_is_compilation": 38,
+        "checkbox_disabled": 42,
+        "checkbox_remember_playback_position": 50,
+        "checkbox_show_composer_in_all_views": 51,
+        "checkbox_use_work_and_movement": 52,
+        "downloaded": 57,
         "purchased": 58,
         "content_rating": 59,
         "suggestion_flag": 62,
-        "rating": 65,
+        "star_rating": 65,
         "bpm": 82,
-        "disc": 84,
-        "total_movements": 86,
-        "movement": 88,
-        "total_discs": 90,
+        "beats_per_minute": 82,  # alias for previous
+        "disc_number": 84,
+        "movement_total": 86,
+        "movement_number": 88,
+        "disc_total": 90,
         "volume_adjustment": 92,
-        "start_pos": 148,
-        "stop_pos": 152,
+        "track_total": 116,
+        "playback_start_pos": 148,
+        "playback_stop_pos": 152,
         "track_number": 160,
         "year": 168,
-        "album_id": 172,
-        "artist_id": 180,
-        "artwork_id_low": 256,
-        "artwork_id_high": 264,
-        "track_id_2": 272,
-        "date_suggestion_flag_changed": 336,
+        "id_album": 172,
+        "id_artist": 180,
+        "id_apple_music_artist": 188,
+        "uuid_1_artwork": 256,  # UUID is 16 bytes but unpack doesn't have a format specifier for that
+        "uuid_2_artwork": 264,
+        "id_track_2": 272,
+        "date_suggestion_flag_modified": 336,
+        "date_added_most_recent_track": 352,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
-        "track_id": 8,
-        "skip_when_shuffling": 1,
-        "album_is_compilation": 1,
-        "disabled": 1,
-        "remember_playback_position": 1,
-        "show_composer_in_all_views": 1,
-        "use_work_and_movement": 1,
+        "id_track": 8,
+        "checkbox_skip_when_shuffling": 1,
+        "checkbox_album_is_compilation": 1,
+        "checkbox_disabled": 1,
+        "checkbox_remember_playback_position": 1,
+        "checkbox_show_composer_in_all_views": 1,
+        "checkbox_use_work_and_movement": 1,
+        "downloaded": 1,
         "purchased": 1,
         "content_rating": 1,
         "suggestion_flag": 2,
-        "rating": 1,
+        "star_rating": 1,
         "bpm": 2,
-        "disc": 2,
-        "total_movements": 2,
-        "movement": 2,
-        "total_discs": 2,
+        "beats_per_minute": 2,
+        "disc_number": 2,
+        "movement_total": 2,
+        "movement_number": 2,
+        "disc_total": 2,
         "track_number": 2,
-        "album_id": 8,
-        "artist_id": 8,
-        "artwork_id_low": 8,
-        "artwork_id_high": 8,
-        "track_id_2": 8,
+        "track_total": 2,
+        "id_album": 8,
+        "id_artist": 8,
+        "uuid_1_artwork": 8,
+        "uuid_2_artwork": 8,
+        "id_track_2": 8,
     })
+    offset_aliases = {
+        "beats_per_minute",
+    }
 
     data_subtypes = {
         "track_numerics": 0x1,
@@ -148,26 +164,41 @@ class itma(DataContainerSection):
         "episode_number": 0x19,
         "album_artist": 0x1b,
         "content_rating": 0x1c,
-        "asset_info_plist": 0x1d,
-        "title_sort": 0x1e,
-        "album_sort": 0x1f,
-        "artist_sort": 0x20,
-        "album_artist_sort": 0x21,
-        "composer_sort": 0x22,
+        "plist_asset_info": 0x1d,
+        "sort_title": 0x1e,
+        "sort_album": 0x1f,
+        "sort_artist": 0x20,
+        "sort_album_artist": 0x21,
+        "sort_composer": 0x22,
         "video": 0x24,
         "isrc": 0x2b,
         "copyright": 0x2e,
         "series_synopsis": 0x33,
         "flavor_string": 0x34,
-        "artwork_plist": 0x36,
-        "redownload_params_plist": 0x38,
+        "plist_artwork": 0x36,
+        "plist_redownload_params": 0x38,
         "purchaser_username": 0x3b,
         "purchaser_name": 0x3c,
-        "work_name": 0x3f,
+        "work": 0x3f,
         "movement_name": 0x40,
         "file": 0x43,
         "series_title": 0x12f,
     }
+    data_subtype_aliases = {
+        "title",
+    }
+
+
+class Downloaded(IntEnum):
+    NOT_DOWNLOADED = 3
+    DOWNLOADED = 1
+
+
+class ContentRating(IntEnum):
+    DEFAULT = 0
+    EXPLICIT = 1
+    CLEAN = 2
+    PARENT_GUIDANCE = 4  # ?
 
 
 class ltma(Section):

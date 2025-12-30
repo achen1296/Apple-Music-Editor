@@ -19,18 +19,27 @@ class iAma(DataContainerSection):
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
-        "artist_id": 16,
-        "artist_store_id": 52,
+        "id_artist": 16,
+        "id_apple_music_artist": 52,
+        "date_modified_suggestion_flag": 60,
+        "uuid_1_artwork": 64, # UUID is 16 bytes but unpack doesn't have a format specifier for that
+        "uuid_2_artwork": 72,
+        "id_artist_2": 80,
+        "suggestion_flag": 101,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
-        "artist_id": 8,
+        "id_artist": 8,
+        "uuid_1_artwork": 8,
+        "uuid_2_artwork": 8,
+        "id_artist_2": 8,
+        "suggestion_flag": 1,
     })
 
     data_subtypes = {
         "artist": 0x190,
-        "artist_sort": 0x191,
-        "artwork_url_plist": 0x192,
+        "sort_artist": 0x191,
+        "plist_artwork_url": 0x192,
     }
 
 

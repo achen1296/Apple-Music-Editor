@@ -2,7 +2,7 @@ import re
 from typing import Callable, Iterable, Type
 
 from library_musicdb import *
-from .sections.binary_object import AnyString
+from sections.binary_object import AnyString
 
 
 class LibrarySearcher:
@@ -214,5 +214,5 @@ if __name__ == "__main__":
     )
     for s in ls.search(l):
         assert isinstance(s, Track)
-        s.set_sub_int("plays_skips", "plays", int(input("play count: ")))
+        s.set_sub_int("plays_skips", "play_count", int(input("play count: ")))
     l.save()
