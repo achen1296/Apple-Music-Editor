@@ -2,6 +2,7 @@ import re
 from typing import Callable, Iterable, Type
 
 from library_musicdb import *
+from .sections.binary_object import AnyString
 
 
 class LibrarySearcher:
@@ -135,7 +136,7 @@ class LibrarySearcher:
 
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, Data):
+                if isinstance(s, AnyString):
                     string = s.get_string()
                     if not case_sensitive:
                         string = string.lower()
@@ -148,7 +149,7 @@ class LibrarySearcher:
     def re_match_string(self, pattern: str | re.Pattern, *, re_flags=re.I):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, Data):
+                if isinstance(s, AnyString):
                     string = s.get_string()
                     if re.search(pattern, string, re_flags):
                         yield s
@@ -167,7 +168,7 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def match_data_subsection_int(self, subtype: str | int, key: str | tuple[int, int], value: int):
+    def match_sub_int(self, subtype: str | int, key: str | tuple[int, int], value: int):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
                 if isinstance(s, DataContainerSection) and s.get_sub_int(subtype, key) == value:
@@ -176,7 +177,7 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def match_data_subsection_string(self, subtype: str | int, pattern: str, *, case_sensitive=False):
+    def match_sub_string(self, subtype: str | int, pattern: str, *, case_sensitive=False):
         if not case_sensitive:
             pattern = pattern.lower()
 
@@ -192,7 +193,7 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def re_match_data_subsection_string(self, subtype: str | int, pattern: str | re.Pattern, *, re_flags=re.I):
+    def re_match_sub_string(self, subtype: str | int, pattern: str | re.Pattern, *, re_flags=re.I):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
                 if isinstance(s, DataContainerSection):
@@ -209,7 +210,7 @@ if __name__ == "__main__":
     ls = (
         LibrarySearcher()
         .descendants_of_type(Track)
-        .match_data_subsection_string("title", input("track title: "))
+        .match_sub_string("title", input("track title: "))
     )
     for s in ls.search(l):
         assert isinstance(s, Track)
