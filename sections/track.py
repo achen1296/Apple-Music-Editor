@@ -8,20 +8,20 @@ class TrackNumerics(Section):
     fixed_size = 364
     offsets = {
         # no **Section.offsets: does not have a typical size offset
-        "sample_rate": 80,
-        "file_folder_count": 92,
-        "library_folder_count": 94,
-        "artwork_count": 96,
-        "artwork_total_size": 104,
-        "bit_rate": 108,
-        "date_added": 112,
-        "lyrics_hash": 144,
-        "date_modified": 148,
-        "normalization": 152,
-        "purchase_date": 156,
-        "release_date": 160,
-        "song_duration": 176,
-        "file_size": 316,
+        "sample_rate": 60,
+        "file_folder_count": 72,
+        "library_folder_count": 74,
+        "artwork_count": 76,
+        "artwork_total_size": 84,
+        "bit_rate": 88,
+        "date_added": 92,
+        "lyrics_hash": 124,
+        "date_modified": 128,
+        "normalization": 132,
+        "purchase_date": 136,
+        "release_date": 140,
+        "song_duration": 156,
+        "file_size": 296,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         "file_folder_count": 2,
@@ -34,23 +34,23 @@ class TrackPlaysSkips(Section):
     fixed_size = 52
     offsets = {
         # no **Section.offsets: does not have a typical size offset
-        "track_id": 20,
-        "last_played": 28,
-        "plays": 32,
-        "true_play_count": 36,
-        "last_skipped": 48,
-        "skips": 52,
-        "true_skip_count": 56,
+        "track_id": 0,
+        "last_played": 8,
+        "plays": 12,
+        "true_play_count": 16,
+        "last_skipped": 28,
+        "skips": 32,
+        "true_skip_count": 36,
     }
 
 
 class Video(Section):
-    fixed_size = 72  # not sure this is right, see readme
+    fixed_size = 52  # not sure this is right, see readme
     offsets = {
         # no **Section.offsets: does not have a typical size offset
-        "height": 20,
-        "width": 24,
-        "framerate": 64,
+        "height": 0,
+        "width": 4,
+        "framerate": 48,
     }
 
 

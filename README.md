@@ -820,14 +820,14 @@ Parents: [boma](#boma-binary-object) (subtype 0x17)
 
 Seems completely understood: X
 
-The length is always 72? (I don't have any of these in my library to check, but Gary Vollink's table ends at offset 68 with size 4 without a "..." after.)
+The length is always 52? (I don't have any of these in my library to check, but Gary Vollink's table ends at offset 48 (remember to subtract 20) with size 4 without a "..." after.)
 
 | Offset | Length | Meaning               | Examples Value(s) |
 | ------ | ------ | --------------------- | ----------------- |
 | 0      | 4      | Vertical resolution   | 480               |
 | 4      | 4      | Horizontal resolution | 640               |
 | ...    |
-| 68     | 4      | Framerate?            | 24                |
+| 48     | 4      | Framerate?            | 24                |
 
 Grandparents: [itma](#itma-track)
 
