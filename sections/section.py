@@ -266,6 +266,22 @@ class Section:
             offset, size = key
         return unpack_int(self._data, offset, size=size)
 
+    def set_boolean(self, key: str | int, value: bool):
+        if isinstance(key, str):
+            offset = self.offsets[key]
+            assert self.offset_int_sizes[key] == 1, "size should be 1 for a boolean!"
+        else:
+            offset = key
+        self.set_int((offset, 1), value)
+
+    def get_boolean(self, key: str | int):
+        if isinstance(key, str):
+            offset = self.offsets[key]
+            assert self.offset_int_sizes[key] == 1, "size should be 1 for a boolean!"
+        else:
+            offset = key
+        return bool(self.get_int((offset, 1)))
+
 
 class Unknown(Section):
     offsets = {}  # remove size offset to rely on the size_hint from parent
