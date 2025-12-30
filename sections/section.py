@@ -58,6 +58,8 @@ class Section:
             self._data = bytearray(data.read(self.fixed_size))
             assert self.size == self.fixed_size  # make sure read() did not stop short
         else:
+            if size_hint is None:
+                raise ValueError("size hint not provided when needed")
             self._data = bytearray(data.read(size_hint))
             assert self.size == size_hint  # make sure read() did not stop short
 
@@ -90,7 +92,7 @@ class Section:
                         message_prefix = f"couldn't figure out what kind of subsection {self.__class__.__name__} should have"
 
                     if "total_size" in self.offsets:
-                        print(f"warning: {message_prefix}, but can proceed with `Unknown` fallback type using total size")
+                        print(f"warning: {message_prefix}, but can proceed with `Unknown` fallback type using parent's total size")
                         self.subsection_class = Unknown
                     else:
                         raise ValueError(f"{message_prefix}, and total size is not provided to fall back on")
@@ -161,6 +163,21 @@ class Section:
             raise ValueError(f"{self.__class__.__name__} section doesn't have a stored subsection count")
         return self.get_int("subsection_count")
 
+    @property
+    def children(self):
+        """ Alias for subsections. """
+        return self.subsections
+
+    @property
+    def subsection(self):
+        """ Convenient alias for sections that are expected to have only one subsection. """
+        return self.subsections[0]
+
+    @property
+    def child(self):
+        """ Convenient alias for sections that are expected to have only one subsection. """
+        return self.subsections[0]
+
     def _edit(self):
         self._edited = True
 
@@ -195,6 +212,7 @@ class Section:
             yield from s
 
     def as_dict(self) -> dict:
+        """ Summary dict of known data in this section (not any subsections). """
         return {
             offset_name: self.get_int(offset_name)
             for offset_name in self.offsets
@@ -205,6 +223,19 @@ class Section:
 
     def __repr__(self):
         return self.__str__()
+
+    def tree(self):
+        """ Return JSON-compatible object representing the tree structure (not any of the data) mainly for debugging. """
+        if "subtype" in self.offsets:
+            key = f"{self.__class__.__name__} (subtype {hex(self.get_int("subtype"))})"
+        else:
+            key = self.__class__.__name__
+        return {
+            key: [
+                s.tree()
+                for s in self.subsections
+            ]
+        }
 
     def set_bytes(self, offset: int | str, value: bytes):
         self._edit()

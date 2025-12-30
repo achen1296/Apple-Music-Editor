@@ -175,7 +175,7 @@ These are also extremely common, but not universal.
 | ------- | ------ | ------------------------------------------------------------------------------------- | ----------------- |
 | 8       | 4      | Associated sections length (bytes) - length of this section + all subsections (bytes) | 1234              |
 | 8 or 12 | 4      | Number of subsections                                                                 | 3                 |
-| 12      | 4      | Section subtype (enum value that hints at the subsection contents)                    | 3                 |
+| 12      | 4      | Section subtype (enum value that hints at the subsection type)                        | 3                 |
 
 Using either associated sections length (which I call "total size" in some places in my code) or number of subsections, it is possible to determine where the subsections end and the next section at either the same level or a higher one begins (a section with subsections usually must have at least one of these). Some kinds of sections have both of these, which is why number of subsections is occasionally at offset 12 instead of 8. When this is the case, my code prefers to use the associated sections length, because it is possible to use this to continue on afterward even in the case of mysterious subsections that might appear in the future.
 

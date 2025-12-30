@@ -8,13 +8,39 @@ class TrackNumerics(Section):
     fixed_size = 364
     offsets = {
         # no **Section.offsets: does not have a typical size offset
+        "sample_rate": 80,
+        "file_folder_count": 92,
+        "library_folder_count": 94,
+        "artwork_count": 96,
+        "artwork_total_size": 104,
+        "bit_rate": 108,
+        "date_added": 112,
+        "lyrics_hash": 144,
+        "date_modified": 148,
+        "normalization": 152,
+        "purchase_date": 156,
+        "release_date": 160,
+        "song_duration": 176,
+        "file_size": 316,
     }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        "file_folder_count": 2,
+        "library_folder_count": 2,
+        "artwork_count": 2,
+    })
 
 
 class TrackPlaysSkips(Section):
     fixed_size = 52
     offsets = {
         # no **Section.offsets: does not have a typical size offset
+        "track_id": 20,
+        "last_played": 28,
+        "plays": 32,
+        "true_play_count": 36,
+        "last_skipped": 48,
+        "skips": 52,
+        "true_skip_count": 56,
     }
 
 
@@ -22,6 +48,9 @@ class Video(Section):
     fixed_size = 72  # not sure this is right, see readme
     offsets = {
         # no **Section.offsets: does not have a typical size offset
+        "height": 20,
+        "width": 24,
+        "framerate": 64,
     }
 
 
@@ -101,7 +130,8 @@ class itma(DataContainerSection):
 
     data_subtypes = {
         "track_numerics": 0x1,
-        "title": 0x2,
+        "name": 0x2,
+        "title": 0x2,  # alias for the previous
         "album": 0x3,
         "artist": 0x4,
         "genre": 0x5,
@@ -138,45 +168,6 @@ class itma(DataContainerSection):
         "file": 0x43,
         "series_title": 0x12f,
     }
-    numeric_data_offsets = {
-        0x1: {
-            "sample_rate": 80,
-            "file_folder_count": 92,
-            "library_folder_count": 94,
-            "artwork_count": 96,
-            "artwork_total_size": 104,
-            "bit_rate": 108,
-            "date_added": 112,
-            "lyrics_hash": 144,
-            "date_modified": 148,
-            "normalization": 152,
-            "purchase_date": 156,
-            "release_date": 160,
-            "song_duration": 176,
-            "file_size": 316,
-        },
-        0x17: {
-            "track_id": 20,
-            "last_played": 28,
-            "plays": 32,
-            # jsharkey13 has "play_count_2": 36 but I'm not sure what this means
-            "last_skipped": 48,
-            "skips": 52
-            # jsharkey13 has "skip_count_2": 56 but I'm not sure what this means
-        },
-        0x24: {
-            "height": 20,
-            "width": 24,
-            "framerate": 64,
-        },
-    }
-    numeric_data_sizes = defaultdict(lambda: defaultdict(lambda: 4), {
-        0x1: defaultdict(lambda: 4, {
-            "file_folder_count": 2,
-            "library_folder_count": 2,
-            "artwork_count": 2,
-        })
-    })
 
 
 class ltma(Section):

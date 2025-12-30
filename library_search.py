@@ -170,7 +170,7 @@ class LibrarySearcher:
     def match_data_subsection_int(self, subtype: str | int, key: str | tuple[int, int], value: int):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, DataContainerSection) and s.get_data_subsection_int(subtype, key) == value:
+                if isinstance(s, DataContainerSection) and s.get_sub_int(subtype, key) == value:
                     yield s
 
         self.search_actions.append(f)
@@ -183,7 +183,7 @@ class LibrarySearcher:
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
                 if isinstance(s, DataContainerSection):
-                    string = s.get_data_subsection_string(subtype)
+                    string = s.get_sub_string(subtype)
                     if not case_sensitive:
                         string = string.lower()
                     if pattern in string:
@@ -196,7 +196,7 @@ class LibrarySearcher:
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
                 if isinstance(s, DataContainerSection):
-                    string = s.get_data_subsection_string(subtype)
+                    string = s.get_sub_string(subtype)
                     if re.search(pattern, string, re_flags):
                         yield s
 
@@ -213,5 +213,5 @@ if __name__ == "__main__":
     )
     for s in ls.search(l):
         assert isinstance(s, Track)
-        s.set_data_subsection_int("plays_skips", "plays", int(input("play count: ")))
+        s.set_sub_int("plays_skips", "plays", int(input("play count: ")))
     l.save()

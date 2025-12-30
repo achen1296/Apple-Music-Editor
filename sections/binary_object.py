@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import override
 
 from .section import Section
@@ -80,10 +79,6 @@ class DataContainerSection(Section):
 
     data_subtypes: dict[str, int] = {}
     """ Subtype name -> subtype number """
-    numeric_data_offsets: dict[int, dict[str, int]] = {}
-    """ Subtype number -> offset name -> offset. Anything not given offsets here is assumed to be a string container. """
-    numeric_data_sizes: defaultdict[int, defaultdict[str, int]] = defaultdict(lambda: defaultdict(lambda: 4))
-    """ Subtype number -> offset name -> size. Anything not given offsets here is assumed to be a string container. """
 
     def data_subsection_of_subtype(self, subtype: str | int):
         if isinstance(subtype, str):
@@ -93,65 +88,55 @@ class DataContainerSection(Section):
                 return s  # assumes there's only one subsection with the specified subtype
         raise KeyError(self, subtype)
 
-    def get_data_subsection_string(self, subtype: str | int):
-        if isinstance(subtype, str):
-            # if subtype given as int we will assume caller already knows what they're doing (or intentionally wants to bypass these checks e.g. for a section type unknown to the code)
-            subtype_number = self.data_subtypes[subtype]
-            if subtype_number in self.numeric_data_offsets:
-                raise ValueError(f"subtype {subtype} is not supposed to be a string")
-        return self.data_subsection_of_subtype(subtype).get_string()
+    def get_sub_string(self, subtype: str | int):
+        subsection = self.data_subsection_of_subtype(subtype)
 
-    def set_data_subsection_string(self, subtype: str | int, value: str):
-        if isinstance(subtype, str):
-            subtype_number = self.data_subtypes[subtype]
-            if subtype_number in self.numeric_data_offsets:
-                raise ValueError(f"subtype {subtype} is not supposed to be a string")
-        self.data_subsection_of_subtype(subtype).set_string(value)
+        if isinstance(subsection.child, AnyString):
+            return subsection.child.get_string()
 
-    def get_data_subsection_int(self, subtype: str | int, key: str | tuple[int, int]):
-        if isinstance(subtype, str):
-            subtype_number = self.data_subtypes[subtype]
-            if subtype_number not in self.numeric_data_offsets:
-                raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
-            subtype = subtype_number
-        if isinstance(key, str):
-            key = (
-                self.numeric_data_offsets[subtype][key],
-                self.numeric_data_sizes[subtype][key]
-            )
-        return self.data_subsection_of_subtype(subtype).get_int(key)
+        raise ValueError(f"subtype {subtype} is not supposed to be a string")
 
-    def set_data_subsection_int(self, subtype: str | int, key: str | tuple[int, int], value: int):
-        if isinstance(subtype, str):
-            subtype_number = self.data_subtypes[subtype]
-            if subtype_number not in self.numeric_data_offsets:
-                raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
-            subtype = subtype_number
-        if isinstance(key, str):
-            key = (
-                self.numeric_data_offsets[subtype][key],
-                self.numeric_data_sizes[subtype][key]
-            )
-        self.data_subsection_of_subtype(subtype).set_int(key, value)
+    def set_sub_string(self, subtype: str | int, value: str):
+        subsection = self.data_subsection_of_subtype(subtype)
+
+        if isinstance(subsection.child, AnyString):
+            return subsection.child.set_string(value)
+
+        raise ValueError(f"subtype {subtype} is not supposed to be a string")
+
+    def get_sub_int(self, subtype: str | int, key: str | tuple[int, int]):
+        subsection = self.data_subsection_of_subtype(subtype)
+
+        if isinstance(subsection.child, AnyString):
+            raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
+
+        return subsection.child.get_int(key)
+
+    def set_sub_int(self, subtype: str | int, key: str | tuple[int, int], value: int):
+        subsection = self.data_subsection_of_subtype(subtype)
+
+        if isinstance(subsection.child, AnyString):
+            raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
+
+        subsection.child.set_int(key, value)
 
     @override
     def as_dict(self):
         d = super().as_dict()
-        for subsection in self.subsections:
-            if isinstance(subsection, boma):
-                for subtype_name, subtype_number in self.data_subtypes.items():
-                    if subtype_number == subsection.subtype:
-                        if subtype_number in self.numeric_data_offsets:
-                            d[subtype_name] = {
-                                offset_name: subsection.get_int((offset, self.numeric_data_sizes[subtype_number][offset_name]))
-                                for offset_name, offset in self.numeric_data_offsets[subtype_number].items()
-                            }
-                        else:
-                            d[subtype_name] = subsection.get_string()
+        for subtype_name in self.data_subtypes:
+            try:
+                subsection = self.data_subsection_of_subtype(subtype_name)
+            except KeyError:
+                pass
+            else:
+                if isinstance(subsection.child, AnyString):
+                    d[subtype_name] = subsection.child.get_string()
+                else:
+                    d[subtype_name] = subsection.child.as_dict()
         return d
 
 # don't know where these boma subtypes go because they aren't in my library
-# listed as "book" type on vollink but not present in my library: 0x42,
+# listed as "book" type on vollink: 0x42,
 # "unknown 64x4b hex string": 0x1f4,
 # another "unknown 64x4b hex string": 0x1fe,
 # "xml block (unknown utility)": 0x2bc,

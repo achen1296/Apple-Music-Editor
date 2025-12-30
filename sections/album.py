@@ -3,12 +3,14 @@ from collections import defaultdict
 from .binary_object import DataContainerSection, String, boma
 from .section import Section
 
+
 class bomaAlbum(boma):
     subsection_class_by_subtype = {
         0x12C: String,
         0x12D: String,
         0x12E: String,
     }
+
 
 class iama(DataContainerSection):
     expected_signature = b"iama"
@@ -29,6 +31,7 @@ class iama(DataContainerSection):
 
     data_subtypes = {
         "name": 0x12c,
+        "title": 0x12c,  # alias for the previous
         "artist": 0x12d,
         "album_artist": 0x12e,
     }

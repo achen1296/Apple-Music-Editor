@@ -72,6 +72,7 @@ class SmartPlaylistOptions(Section):
     fixed_size = 112
     offsets: dict[str, int] = {
         # no **Section.offsets: does not have a typical size offset
+        # todo
     }
 
 
@@ -106,21 +107,12 @@ class lpma(DataContainerSection):
 
     data_subtypes = {
         "name": 0xc8,
+        "title": 0xc8,  # alias for the previous
         "smart_playlist_rules": 0xc9,
         "smart_playlist_options": 0xca,
         "generated_artwork_uuids_plist": 0xcd,
         "ipfa": 0xce,
     }
-    numeric_data_offsets = {
-        0xce: {},   # todo
-        0xca: {},   # todo
-        0xc9: {},   # todo
-    }
-    numeric_data_sizes = defaultdict(lambda: defaultdict(lambda: 4), {
-        0xce: defaultdict(lambda: 4, {}),  # todo
-        0xca: defaultdict(lambda: 4, {}),  # todo
-        0xc9: defaultdict(lambda: 4, {}),  # todo
-    })
 
 
 class lPma(Section):
