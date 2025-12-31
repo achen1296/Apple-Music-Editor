@@ -3,6 +3,7 @@ from enum import IntEnum
 
 from .binary_object import DataContainerSection, RawStringUTF8, String, boma
 from .section import Section
+from .shared_enums import StarRating, SuggestionFlag
 
 
 class TrackNumerics(Section):
@@ -71,6 +72,18 @@ class bomaTrack(boma):
             0x38: RawStringUTF8,
         }
     )
+
+
+class Downloaded(IntEnum):
+    NOT_DOWNLOADED = 3
+    DOWNLOADED = 1
+
+
+class ContentRating(IntEnum):
+    DEFAULT = 0
+    EXPLICIT = 1
+    CLEAN = 2
+    PARENT_GUIDANCE = 4  # ?
 
 
 class itma(DataContainerSection):
@@ -143,6 +156,12 @@ class itma(DataContainerSection):
     offset_aliases = {
         "beats_per_minute",
     }
+    offset_int_enums = {
+        "downloaded": Downloaded,
+        "content_rating": ContentRating,
+        "suggestion_flag": SuggestionFlag,
+        "star_rating": StarRating,
+    }
 
     data_subtypes = {
         "track_numerics": 0x1,
@@ -187,18 +206,6 @@ class itma(DataContainerSection):
     data_subtype_aliases = {
         "title",
     }
-
-
-class Downloaded(IntEnum):
-    NOT_DOWNLOADED = 3
-    DOWNLOADED = 1
-
-
-class ContentRating(IntEnum):
-    DEFAULT = 0
-    EXPLICIT = 1
-    CLEAN = 2
-    PARENT_GUIDANCE = 4  # ?
 
 
 class ltma(Section):

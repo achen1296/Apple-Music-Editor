@@ -1,30 +1,7 @@
 from collections import defaultdict
 from enum import IntEnum
+
 from .section import Section
-
-
-class SmartPlaylistOptions(Section):
-    fixed_size = 112
-    offsets: dict[str, int] = {
-        # no **Section.offsets: does not have a typical size offset
-        "checkbox_live_updating": 0,
-        "checkbox_enable_matching_rules": 1,
-        "checkbox_enable_limit": 2,
-        "limit_unit": 3,
-        "limit_selection_method": 4,
-        "limit_count": 8,
-        "checkbox_match_only_checked_items": 12,
-        "negate_selection_method": 13,
-    }
-    offset_int_sizes = defaultdict(lambda: 4, {
-        "checkbox_live_updating": 1,
-        "checkbox_enable_matching_rules": 1,
-        "checkbox_enable_limit": 1,
-        "limit_unit": 1,
-        "limit_selection_method": 1,
-        "checkbox_match_only_checked_items": 1,
-        "negate_selection_method": 1,
-    })
 
 
 class LimitUnit(IntEnum):
@@ -56,3 +33,32 @@ class LimitSelectionMethodModifier(IntEnum):
     NEGATED = 1
     LOWEST = NEGATED
     LEAST = NEGATED
+
+
+class SmartPlaylistOptions(Section):
+    fixed_size = 112
+    offsets: dict[str, int] = {
+        # no **Section.offsets: does not have a typical size offset
+        "checkbox_live_updating": 0,
+        "checkbox_enable_matching_rules": 1,
+        "checkbox_enable_limit": 2,
+        "limit_unit": 3,
+        "limit_selection_method": 4,
+        "limit_count": 8,
+        "checkbox_match_only_checked_items": 12,
+        "limit_selection_method_modifier": 13,
+    }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        "checkbox_live_updating": 1,
+        "checkbox_enable_matching_rules": 1,
+        "checkbox_enable_limit": 1,
+        "limit_unit": 1,
+        "limit_selection_method": 1,
+        "checkbox_match_only_checked_items": 1,
+        "limit_selection_method_modifier": 1,
+    })
+    offset_int_enums = {
+        "limit_unit": LimitUnit,
+        "limit_selection_method": LimitSelectionMethod,
+        "limit_selection_method_modifier": LimitSelectionMethodModifier,
+    }

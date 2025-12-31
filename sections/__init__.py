@@ -12,11 +12,11 @@ from .smart_playlist_options import (LimitSelectionMethod,
                                      LimitSelectionMethodModifier, LimitUnit,
                                      SmartPlaylistOptions)
 from .smart_playlist_rule import (BooleanComparison, BooleanField, CloudStatus,
-                                  DateComparison, DateField,
-                                  EnumFlagComparison, EnumFlagField, IntEnum,
-                                  Location, MediaKind, NumericComparison,
-                                  NumericField, PlaylistComparison,
-                                  PlaylistField, SmartPlaylistRule,
+                                  DateComparison, DateField, EnumComparison,
+                                  EnumField, Location, MediaKind,
+                                  NumericComparison, NumericField,
+                                  PlaylistComparison, PlaylistField,
+                                  SmartPlaylistRule,
                                   StarRatingSmartPlaylistArgument,
                                   StringComparison, StringField)
 from .smart_playlist_rules_list import Conjunction, SLst, SmartPlaylistRule

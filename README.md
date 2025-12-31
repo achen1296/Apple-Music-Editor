@@ -39,6 +39,7 @@ So far I have successfully edited simple things like the play count of a track, 
 
 - [General Notes](#general-format-notes)
 - [Consistent Naming of Fields](#consistent-naming-of-fields)
+- [Time Zone Handling](#time-zone-handling)
 - [Encryption and Compression](#encryption-and-compression)
 - [Section Structure](#section-structure)
 
@@ -95,6 +96,8 @@ So far I have successfully edited simple things like the play count of a track, 
 
 # Investigation Tips
 
+[Back to TOC](#table-of-contents)
+
 Methods in order from best to worst IMO:
 
 - dump the binary, change something in the GUI, and dump the binary again to compare what's changed in a hex editor — if only one thing has changed, that's definitely the byte representation of the change you made in the GUI
@@ -119,6 +122,15 @@ Interpreting unknown values:
 - with one exception to the previous: dates are expressed in seconds since 1904-01-01T00:00 (former MacOS epoch), therefore values in the high 3 billions (or higher if you are reading this in the 2030s and beyond) should be suspected as dates
 - try throwing numbers (in decimal) into a web search "site:music.apple.com \<number\>" if you think it might be an Apple Music store ID (although I think I found all of those already)
 
+To determine the size of an unknown section that doesn't have the size in the usual place:
+
+- for data in a list:
+  - dump the binary with no entries, add an entry, dump again and see how much data got added
+  - or create 2 identical entries and see how much space is in between the data repeating (this is what I did for smart playlists initially)
+- manipulate change the size of the section and try to see if any data has changed by the amount the size has changed
+  - easiest with string data
+  - may be hard to filter out other changes that occur simultaneously, especially since size is one of the first things one must learn about a new section type
+
 # General Format Notes
 
 [Back to TOC](#table-of-contents)
@@ -134,6 +146,8 @@ Interpreting unknown values:
   - Obviously the section signature will also always be the same for a certain section type, almost by definition.
 
 # Consistent Naming of Fields
+
+[Back to TOC](#table-of-contents)
 
 Inside the code, I use these conventions for naming fields (offsets) to keep things consistent:
 
@@ -159,7 +173,15 @@ Inside the code, I use these conventions for naming fields (offsets) to keep thi
 
 For some fields I provide alias names where either can be used, e.g. "name" and "title".
 
+# Time Zone Handling
+
+[Back to TOC](#table-of-contents)
+
+Dates are almost always stored using the local time on the computer. [hfma](#hfma-file-header) contains a time zone offset that can be used to convert to another time zone. (What happens if the computer's time zone is changed?)
+
 # Encryption and Compression
+
+[Back to TOC](#table-of-contents)
 
 To get what I refer to as the "raw" library bytes from the file as saved on disk by Apple Music:
 
@@ -1094,7 +1116,7 @@ Children:
 
 [Back to TOC](#table-of-contents)
 
-Seems completely understood: ✓
+Seems completely understood: ✓ ([almost](#unknown-smart-playlist-field))
 
 Length is 56 + offset 54 value. For non-strings, it is always 124 (offset 54 is always 68).
 
@@ -1102,11 +1124,11 @@ Length is 56 + offset 54 value. For non-strings, it is always 124 (offset 54 is 
 
 | Offset | Length                                       | Meaning                        | Examples Value(s) |
 | ------ | -------------------------------------------- | ------------------------------ | ----------------- |
-| 0      | 4                                            | Field to match                 | see below         |
+| 0      | 4                                            | Field                          | see below         |
 | 4      | 4                                            | Comparison method              | see below         |
 | ...    |
-| 54     | 2                                            | Length starting from offset 56 |
-| 56     | variable for strings, 68 for everything else | Match value - see below        |
+| 54     | 2                                            | Size _starting from offset 56_ |
+| 56     | variable for strings, 68 for everything else | Arguments - see below          |
 
 Unfortunately, no, offset 0 does not match the related boma subtype in all cases (though it does in some).
 
@@ -1114,11 +1136,14 @@ In all cases for offset 4, it looks like the bit 0x 02 00 00 00 is set to negate
 
 When offset 56 is not a string:
 
-- it seems to be broken into chunks of sizes 8, 16, 8, 16, 20 bytes respectively
-- each except the last is all 0x00 terminated by a 0x01 byte by default
-- the last is all 0 by default
-- each chunk is (usually) used for one parameter of the smart playlist rule (even if it isn't large enough to require all of its bytes)
-- unused chunks are left as the default values described here
+- it seems to be broken into chunks of size 8
+  - even though 68 is not a multiple of 8 — see details below, the last half-chunk doesn't get used anyway
+  - I will call the 8-byte chunk at offset 56 "chunk 0", offset 64 "chunk 1", etc. (in the code: "argument_0", "argument_1", etc.)
+- by default, chunks 0, 2, 3, and 5 are terminated by a 0x01 byte, and everything else is 0x00
+  - this fact, along with the actual way the arguments are filled into these chunks (0 and 3 are used most often), could also suggest that they are supposed to be chunks of size 8, 16, 8, 16, and 20 instead, however under this interpretation the one case where a 16-byte chunk gets used ([Dates](#dates)), it is split in half anyway
+- each chunk is used for one parameter of the smart playlist rule (even if it isn't large enough to require all of its bytes)
+- unused chunks are left with the default values above
+- as you will see below, although there is potential to have 8.5 8-byte chunks, only the first 4 (0-3) actually get used
 
 See below for full details on each offset depending on what type the match value is.
 
@@ -1126,7 +1151,7 @@ Parents: [SLst](#slst-smart-playlist-rules-list)
 
 ## Booleans
 
-Offset 0 field to match enum values:
+Offset 0 field enum values:
 
 - 0x 00 00 00 25 = "album artwork", i.e. has artwork (true) or not (false)
 - 0x 00 00 00 1D = "checked" (referred to as "disabled" at [itma](#itma-track) offset 42; _just like there, this uses reversed values compared to other booleans_)
@@ -1138,7 +1163,7 @@ Offset 4 comparison method enum values:
 - 0x 00 00 00 01 = is true
 - 0x 02 00 00 01 = is false
 
-Offset 56 match value: not used (all default as described above)
+Offset 56 arguments: not used (all default as described above)
 
 ## Numerics
 
@@ -1168,8 +1193,9 @@ Offset 4:
 
 Offset 56:
 
-- first 8-byte chunk is the first argument
-- second 8-byte chunk is zeroed out unless offset 4 is "is in the range", then it is the second argument
+- chunk 0: first argument
+- chunk 3: second argument
+  - it is always zero except for "is in the range", since this is the only comparison method with 2 arguments
 - for star ratings, uses these values:
   - 0 stars = -20 (0x FF FF FF FF FF FF FF EC)
   - otherwise the usual 20 (0x 00 00 00 14) = 1 star up to 100 (0x 00 00 00 64) = 5 stars
@@ -1198,33 +1224,32 @@ Offset 56:
 The Apple Music GUI only allows selecting with a precision of 1 day. (It also seems to handle time zones poorly — the date you select may have shifted by 1 when you open the rules again.)
 
 - For "is" and "is not":
-  - first 8-byte chunk is set to midnight of the date chosen, e.g. 0x 00 00 00 00 E5 76 23 80 = 2025-12-28T00:00:00
-  - second 8-byte chunk is set to 23:59:59 of the same date, e.g. 0x 00 00 00 00 E5 77 74 FF = 2025-12-28T23:59:59
+  - chunk 0: midnight of the date chosen, e.g. 0x 00 00 00 00 E5 76 23 80 = 2025-12-28T00:00:00
+  - chunk 3: 23:59:59 of the same date, e.g. 0x 00 00 00 00 E5 77 74 FF = 2025-12-28T23:59:59
   - this suggests it is actually using numeric "is in the range" and "is not in the range" internally (is "is not in the range" a valid value for other numerics even though it's not presented in the GUI?)
   - would the Apple Music program accept more precise bounds edited in?
 - For "is after":
-  - both 8-byte chunks are set to 23:59:59 of the date chosen
+  - chunk 0 and chunk 3 both set to 23:59:59 of the date chosen
   - seems to be using "is greater than"
 - For "is before":
-  - both 8-byte chunks are set to midnight of the date
+  - chunk 0 and chunk 3 both set to midnight of the date
   - seems to be using "is less than"
 - For "is in the last" and "is not in the last":
-  - both 8-byte chunks are filled in with 0x 2D AE repeated
+  - chunk 0 and chunk 3 both filled in with 0x 2D AE repeated
     - not sure what the significance of this value is
     - I find it amusing that reading it aloud sounds a bit like "today", which might just be a coincidence
-  - first 16-byte chunk is split into 2 8-byte chunks:
-    - first half is the count, negated
-      - for example, for "is in the last 1 \<unit\>", you get 0x FF FF FF FF FF FF FF FF (-1)
-    - second half is the unit, in seconds
-      - 0x 00 00 00 00 00 01 51 80 = 86,400 seconds = 1 day → unit is days
-      - 0x 00 00 00 00 00 09 3a 80 = 604,800 seconds → weeks
-      - 0x 00 00 00 00 00 28 19 A0 = 2,628,000 seconds = 86,400 \* 365 / 12 → months
-    - this makes me wonder what would happen if you:
-      - edited in a positive count
-      - edited in some other unit
+  - chunk 1: the count, negated
+    - for example, for "is in the last 1 \<unit\>", you get 0x FF FF FF FF FF FF FF FF (-1)
+  - chunk 2:
+    - 0x 00 00 00 00 00 01 51 80 = 86,400 seconds = 1 day → unit is days
+    - 0x 00 00 00 00 00 09 3a 80 = 604,800 seconds → weeks
+    - 0x 00 00 00 00 00 28 19 A0 = 2,628,000 seconds = 86,400 \* 365 / 12 → months
+  - this makes me wonder what would happen if you:
+    - edited in a positive count
+    - edited in some other unit
 - For "is in the range":
-  - first 8-byte chunk is set to midnight of the first date chosen, e.g. 0x 00 00 00 00 E5 76 23 80 = 2025-12-28T00:00:00
-  - second 8-byte chunk is set to 23:59:59 of the second date chosen, e.g. 0x 00 00 00 00 E5 77 74 FF = 2025-12-28T23:59:59
+  - chunk 0: midnight of the first date chosen
+  - chunk 3: 23:59:59 of the second date chosen
   - if you select the same date for both bounds, close the rules list, and reopen it, the Apple Music GUI will show it as an "is" rule, proving that there is literally no difference!
 
 ## Enums
@@ -1248,7 +1273,7 @@ Offset 4:
 
 Offset 56:
 
-- both 8-byte chunks are set identically to the enum value argument
+- chunk 0 and chunk 3 are both set identically to the enum value argument
 - Suggestion flags:
   - set to value as described under [itma](#itma-track) (value of 1 is not used)
 - Cloud status:
@@ -1333,8 +1358,18 @@ Offset 4:
 
 Offset 56:
 
-- first chunk (8 bytes) has its first 4 bytes replaced with the playlist ID _with bytes reversed compared to the usual order_ (matching how everything else is big-endian in here)
-- second chunk (16 bytes) also has the first 4 bytes as the same playlist ID _only if this smart playlist is actually a playlist folder_, otherwise 0
+- chunk 0: playlist ID _with bytes reversed compared to the usual order_ (matching how everything else is big-endian in here)
+- chunk 3: same playlist ID _only if this smart playlist is actually a playlist folder_, otherwise 0
+
+## Unknown Smart Playlist Field
+
+Offset 0: 0x 00 00 00 A4
+
+Offset 4: 0x 00 00 00 01
+
+Offset 56: all default
+
+This only appears only inside of the "TV & Movies" special playlist, and there is no corresponding value inside of the GUI to put a name to it. From the rest of the data, I'm guessing it's a boolean.
 
 # LPma (Padding?)
 

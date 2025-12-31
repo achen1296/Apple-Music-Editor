@@ -2,9 +2,11 @@ from enum import IntEnum
 
 
 class SuggestionFlag(IntEnum):
+    DEFAULT = 0
+    UNSET = 1 # GUI changes to this value after previously loved/disliked
     LOVE = 2
-    DISLIKE = 3
-    NOT_LOVE_OR_DISLIKE = 0
+    SUGGEST_LESS = 3
+    DISLIKE = SUGGEST_LESS # former name of this value
 
 
 class StarRating(IntEnum):

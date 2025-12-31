@@ -1,43 +1,10 @@
 from collections import defaultdict
-from enum import Enum, IntEnum
+from enum import IntEnum
 from io import BytesIO
+from typing import Type, override
+
 from .section import BigEndianSection
-
-
-class SmartPlaylistRule(BigEndianSection):
-    fixed_size = 56  # must read this far to get offset 54, 2 bytes to determine how long the rest is
-    offsets = {
-        # no **Section.offsets: does not have a typical size offset
-        "match_field": 0,
-        "comparison_method": 4,
-        "arguments_size": 54,
-
-        "string_argument": 56,
-        # these are intentionally overlapping with "string_argument"
-        "argument_1": 56,
-        "argument_2": 64,
-        "argument_3": 80,
-        "argument_4": 88,
-        "argument_5": 104,
-    }
-    offset_int_sizes = defaultdict(lambda: 4, {
-        "arguments_size": 2,
-        "argument_1": 8,
-        "argument_2": 16,
-        "argument_3": 8,
-        "argument_4": 16,
-        "argument_5": 20,
-    })
-
-    def __init__(self, data: BytesIO, *args, **kwargs):
-        super().__init__(data, *args, **kwargs)
-
-        arg_length = self.get_int("arguments_size")
-        self._data += data.read(arg_length)
-        assert self.fixed_size is not None and self.size == self.fixed_size + arg_length
-
-    # def __str__(self):
-    # todo
+from .shared_enums import SuggestionFlag
 
 
 def negate_comparison_method(i: int):
@@ -82,12 +49,18 @@ class NumericComparison(IntEnum):
 
 
 class StarRatingSmartPlaylistArgument(IntEnum):
-    STARS_0 = -20
+    STARS_0 = -20  # this one is different from StarRating
     STARS_1 = 20
     STARS_2 = 40
     STARS_3 = 60
     STARS_4 = 80
     STARS_5 = 100
+
+
+NUMERIC_FIELD_ARGUMENT_VALUE_ENUMS: dict[NumericField, Type[IntEnum]] = {
+    NumericField.STAR_RATING_ALBUM: StarRatingSmartPlaylistArgument,
+    NumericField.STAR_RATING_TRACK: StarRatingSmartPlaylistArgument,
+}
 
 
 class DateField(IntEnum):
@@ -109,7 +82,7 @@ class DateComparison(IntEnum):
     IS_NOT_IN_THE_LAST = negate_comparison_method(IS_IN_THE_LAST)
 
 
-class EnumFlagField(IntEnum):
+class EnumField(IntEnum):
     SUGGESTION_FLAG_ALBUM = 0x9C
     ALBUM_FAVORITE = SUGGESTION_FLAG_ALBUM  # alias matching name in GUI
 
@@ -122,7 +95,7 @@ class EnumFlagField(IntEnum):
     MEDIA_KIND = 0x3C
 
 
-class EnumFlagComparison(IntEnum):
+class EnumComparison(IntEnum):
     IS = 0x1
     IS_NOT = negate_comparison_method(IS)
 
@@ -143,12 +116,12 @@ class CloudStatus(IntEnum):
     NOT_UPLOADED = 10
 
 
-class Location(Enum):
+class Location(IntEnum):
     ON_COMPUTER = 1
     ICLOUD = 16
 
 
-class MediaKind(Enum):
+class MediaKind(IntEnum):
     MUSIC = 0x1
     MUSIC_VIDEO = 0x20
     MOVIES = 0x2
@@ -160,7 +133,16 @@ class MediaKind(Enum):
     HOME_VIDEOS = 0x_04_00
 
 
-class StringField(Enum):
+ENUM_FIELD_ARGUMENT_VALUE_ENUMS: dict[EnumField, Type[IntEnum]] = {
+    EnumField.SUGGESTION_FLAG_ALBUM: SuggestionFlag,
+    EnumField.SUGGESTION_FLAG_TRACK: SuggestionFlag,
+    EnumField.CLOUD_STATUS: CloudStatus,
+    EnumField.LOCATION: Location,
+    EnumField.MEDIA_KIND: MediaKind,
+}
+
+
+class StringField(IntEnum):
     ALBUM = 0x3
     ALBUM_ARTIST = 0x47
     ARTIST = 0x4
@@ -199,3 +181,114 @@ class PlaylistField(IntEnum):
 class PlaylistComparison(IntEnum):
     IS = 0x1
     IS_NOT = negate_comparison_method(IS)
+
+
+AnyField = BooleanField | NumericField | DateField | EnumField | StringField | PlaylistField
+AnyComparison = BooleanComparison | NumericComparison | DateComparison | EnumComparison | StringComparison | PlaylistComparison
+
+FIELD_INT_ENUMS: list[Type[IntEnum]] = [BooleanField, NumericField, DateField, EnumField, StringField, PlaylistField,]
+COMPARISON_INT_ENUMS: dict[Type[IntEnum], Type[IntEnum]] = {
+    BooleanField: BooleanComparison,
+    NumericField: NumericComparison,
+    DateField: DateComparison,
+    EnumField: EnumComparison,
+    StringField: StringComparison,
+    PlaylistField: PlaylistComparison,
+}
+ARGUMENTS_USED: dict[Type[IntEnum], list[str]] = {
+    BooleanField: [],
+    NumericField: ["argument_0", "argument_3"],
+    DateField: [f"argument_{i}" for i in range(0, 4)],
+    EnumField: ["argument_0", "argument_3"],
+    StringField: [],
+    PlaylistField: ["argument_0", "argument_3"],
+}
+
+MAX_ARGUMENTS = 8
+
+
+class SmartPlaylistRule(BigEndianSection):
+    fixed_size = 56  # must read this far to get offset 54, 2 bytes to determine how long the rest is
+    offsets = {
+        # no **Section.offsets: does not have a typical size offset
+        "field": 0,
+        "comparison_method": 4,
+        "arguments_size": 54,
+
+        "argument_string": 56,
+        # these are intentionally overlapping with "argument_string"
+        **{
+            f"argument_{i}": 56 + i*8
+            for i in range(0, MAX_ARGUMENTS)  # could fit up to 8 8-byte chunks even though only 4 actually get used
+        },
+    }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        "arguments_size": 2,
+        **{
+            f"argument_{i}": 8
+            for i in range(0, MAX_ARGUMENTS)
+        },
+    })
+    # offset_int_enums = {}
+    # to be set depending on the actual values encountered
+
+    def __init__(self, data: BytesIO, *args, **kwargs):
+        super().__init__(data, *args, **kwargs)
+
+        arg_length = self.get_int("arguments_size")
+        self._data += data.read(arg_length)
+        assert self.fixed_size is not None and self.size == self.fixed_size + arg_length
+
+        # figure out field type and arguments in use
+        # cannot just look for the default values to determine arguments in use because some actual values collide with them
+
+        field = self.get_int("field")
+        for e in FIELD_INT_ENUMS:
+            try:
+                field = e(field)
+            except ValueError:
+                pass
+
+        if not isinstance(field, IntEnum):
+            print(f"warning: unknown smart playlist field {field}")
+            self.int_arguments_in_use = [
+                f"argument_{i}"
+                for i in range(0, MAX_ARGUMENTS)
+            ]  # just so they all get included in __str__
+            self.string_argument_in_use = False # may not be safe to decode for arbitrary data
+            return
+
+        self.offset_int_enums = {
+            "field": field.__class__,
+            "comparison_method": COMPARISON_INT_ENUMS[field.__class__],
+        }
+
+        if isinstance(field, EnumField):
+            self.offset_int_enums["argument_1"] = self.offset_int_enums["argument_3"] = ENUM_FIELD_ARGUMENT_VALUE_ENUMS[field]
+
+        self.int_arguments_in_use = ARGUMENTS_USED[field.__class__]
+        self.string_argument_in_use = isinstance(field, StringField)
+
+    def get_string(self):
+        if not self.string_argument_in_use:
+            raise ValueError("this smart playlist rule is not supposed to have a string argument")
+        return self._data[self.offsets["argument_string"]:].decode("utf_16_be")
+
+    def set_string(self, value: str):
+        if not self.string_argument_in_use:
+            raise ValueError("this smart playlist rule is not supposed to have a string argument")
+        self._data[self.offsets["argument_string"]:] = value.encode("utf_16_be")
+
+    @override
+    def as_dict(self) -> dict:
+        d = {
+            offset_name: self.get_int(offset_name)
+            for offset_name in [
+                "field",
+                "comparison_method",
+                "arguments_size"
+            ] + self.int_arguments_in_use
+        }
+        if self.string_argument_in_use:
+            d["argument_string"] = self.get_string()
+        return d

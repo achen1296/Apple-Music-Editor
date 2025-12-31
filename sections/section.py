@@ -1,4 +1,5 @@
 from collections import defaultdict
+from enum import IntEnum
 from io import BytesIO
 from typing import Iterator, Type
 
@@ -36,7 +37,9 @@ class Section:
     }
     offset_int_sizes: defaultdict[str, int] = defaultdict(lambda: 4)
     """ Assume size 4 bytes if not specified (since that is the most common) """
-    offset_aliases:set[str] = set()
+    offset_int_enums: dict[str, Type[IntEnum]] = {}
+    """ Indicate that an offset should use values from a specific `IntEnum`. Will show a warning (not an exception to leave the door open for future valid values that the code does not know) if this is not followed in `set_int`. This also improves readability of `__str__` output. """
+    offset_aliases: set[str] = set()
     """ Added offset names to this set to prevent repeating the same offset in `as_dict`. """
 
     def __init__(self, data: BytesIO, size_hint: int | None = None):
@@ -97,6 +100,7 @@ class Section:
                         print(f"warning: {message_prefix}, but can proceed with `Unknown` fallback type using parent's total size")
                         self.subsection_class = Unknown
                     else:
+                        # todo try backing up to ancestors that *do* have a total size
                         raise ValueError(f"{message_prefix}, and total size is not provided to fall back on")
 
             self.subsections.append(
@@ -252,22 +256,48 @@ class Section:
             offset = self.offsets[offset]
         return self._data[offset:offset + length]
 
-    def set_int(self, key: str | tuple[int, int], value: int):
+    def set_int(
+        self, key: str | tuple[int, int], value: int,
+            *, _pack_int_into=pack_int_into,  # this argument is only for BigEndianSection subclass
+    ):
         self._edit()
         if isinstance(key, str):
+            if key in self.offset_int_enums:
+                e = self.offset_int_enums[key]
+                try:
+                    # just check for the warning
+                    e(value)
+                except ValueError:
+                    print(f"warning: when setting value {value} at offset named {key}, did not find a matching value in {e}")
             offset = self.offsets[key]
             size = self.offset_int_sizes[key]
         else:
+            # assume the caller knows what they're doing, including not checking for IntEnum
             offset, size = key
-        pack_int_into(self._data, offset, value, size=size)
+        _pack_int_into(self._data, offset, value, size=size)
 
-    def get_int(self, key: str | tuple[int, int]):
+    def get_int(
+            self, key: str | tuple[int, int],
+            *, _unpack_int=unpack_int,  # this argument is only for BigEndianSection subclass
+    ):
+        e = None
+
         if isinstance(key, str):
             offset = self.offsets[key]
             size = self.offset_int_sizes[key]
+            e = self.offset_int_enums.get(key, None)
         else:
             offset, size = key
-        return unpack_int(self._data, offset, size=size)
+
+        value = _unpack_int(self._data, offset, size=size)
+
+        if e is not None:
+            try:
+                value = e(value)
+            except ValueError:
+                print(f"warning: when trying to interpret value at offset named {key} as {e} found unknown value {value} instead")
+
+        return value
 
     def set_boolean(self, key: str | int, value: bool):
         if isinstance(key, str):
@@ -291,19 +321,12 @@ class Unknown(Section):
 
 
 class BigEndianSection(Section):
-    def set_int(self, key: str | tuple[int, int], value: int):
-        self._edit()
-        if isinstance(key, str):
-            offset = self.offsets[key]
-            size = self.offset_int_sizes[key]
-        else:
-            offset, size = key
-        pack_int_into_be(self._data, offset, value, size=size)
+    def set_int(self, *args, **kwargs):
+        if "_pack_int_into" in kwargs:
+            del kwargs["_pack_int_into"]
+        super().set_int(*args, **kwargs, _pack_int_into=pack_int_into_be)
 
-    def get_int(self, key: str | tuple[int, int]):
-        if isinstance(key, str):
-            offset = self.offsets[key]
-            size = self.offset_int_sizes[key]
-        else:
-            offset, size = key
-        return unpack_int_be(self._data, offset, size=size)
+    def get_int(self, *args, **kwargs):
+        if "_unpack_int" in kwargs:
+            del kwargs["_unpack_int"]
+        return super().get_int(*args, **kwargs, _unpack_int=unpack_int_be)

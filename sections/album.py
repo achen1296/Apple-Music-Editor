@@ -1,6 +1,8 @@
 from collections import defaultdict
 from enum import IntEnum
 
+from .shared_enums import StarRating, SuggestionFlag
+
 from .binary_object import DataContainerSection, String, boma
 from .section import Section
 
@@ -11,6 +13,11 @@ class bomaAlbum(boma):
         0x12D: String,
         0x12E: String,
     }
+
+
+class StarRatingInheritance(IntEnum):
+    DIRECT = 0x1
+    INHERITED = 0x20
 
 
 class iama(DataContainerSection):
@@ -39,6 +46,11 @@ class iama(DataContainerSection):
         "suggestion_flag": 1,
         "id_album_2": 8,
     })
+    offset_int_enums = {
+        "star_rating": StarRating,
+        "star_rating_inheritance": StarRatingInheritance,
+        "suggestion_flag": SuggestionFlag,
+    }
 
     data_subtypes = {
         "name": 0x12c,
@@ -49,11 +61,6 @@ class iama(DataContainerSection):
     data_subtype_aliases = {
         "title",
     }
-
-
-class StarRatingInheritance(IntEnum):
-    DIRECT = 0x1
-    INHERITED = 0x20
 
 
 class lama(Section):

@@ -1,8 +1,11 @@
-
-from collections import defaultdict
 from enum import IntEnum
 from .section import BigEndianSection
 from .smart_playlist_rule import SmartPlaylistRule
+
+
+class Conjunction(IntEnum):
+    ALL = 0
+    ANY = 1
 
 
 class SLst(BigEndianSection):
@@ -19,11 +22,7 @@ class SLst(BigEndianSection):
     offset_aliases = {
         "all_any",
     }
-
-    # def __str__(self):
-    # todo
-
-
-class Conjunction(IntEnum):
-    ALL = 0
-    ANY = 1
+    offset_int_enums = {
+        "conjunction": Conjunction,
+        "all_any": Conjunction,
+    }

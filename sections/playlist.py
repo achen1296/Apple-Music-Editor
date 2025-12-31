@@ -1,6 +1,8 @@
 from collections import defaultdict
 from enum import IntEnum
 
+from .shared_enums import StarRating, SuggestionFlag
+
 from .binary_object import DataContainerSection, RawStringUTF8, String, boma
 from .section import Section
 from .smart_playlist_options import SmartPlaylistOptions
@@ -22,7 +24,6 @@ class ipfa(Section):
     })
 
 
-
 class bomaPlaylist(boma):
     subsection_class_by_subtype = {
         0xCE: ipfa,
@@ -31,6 +32,18 @@ class bomaPlaylist(boma):
         0xC8: String,
         0xCD: RawStringUTF8,
     }
+
+
+class SpecialPlaylist(IntEnum):
+    # remember to reverse endianness since this is 2 bytes!
+    # although maybe it should just be 1 byte...
+    NORMAL = 0
+    DOWNLOADED = 0x_41_00
+    MUSIC = 0x_04_00
+    MUSIC_VIDEOS = 0x_2F_00
+    TV_AND_MOVIES = 0x_40_00
+    GENIUS = 0x_1A_00
+    PURCHASED = 0x_13_00
 
 
 class lpma(DataContainerSection):
@@ -44,7 +57,7 @@ class lpma(DataContainerSection):
         "date_created": 22,
         "id_playlist": 30,
         "id_parent_folder": 50,
-        "id_special_playlist": 78,
+        "special_playlist": 78,
         "date_modified": 138,
         "suggestion_flag": 223,
         "uuid_1_artwork": 263,
@@ -61,6 +74,10 @@ class lpma(DataContainerSection):
         "uuid_2_artwork": 8,
         "id_playlist_2": 8,
     })
+    offset_int_enums = {
+        "special_playlist": SpecialPlaylist,
+        "suggestion_flag": SuggestionFlag,
+    }
 
     data_subtypes = {
         "name": 0xc8,
@@ -73,16 +90,6 @@ class lpma(DataContainerSection):
     data_subtype_aliases = {
         "title",
     }
-
-
-class SpecialPlaylist(IntEnum):
-    NORMAL = 0
-    DOWNLOADED = 0x41
-    MUSIC = 0x04
-    MUSIC_VIDEOS = 0x2F
-    TV_AND_MOVIES = 0x40
-    GENIUS = 0x1A
-    PURCHASED = 0x13
 
 
 class lPma(Section):

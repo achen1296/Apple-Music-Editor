@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+from .shared_enums import StarRating, SuggestionFlag
+
 from .binary_object import DataContainerSection, RawStringUTF8, String, boma
 from .section import Section
 
@@ -35,6 +37,9 @@ class iAma(DataContainerSection):
         "id_artist_2": 8,
         "suggestion_flag": 1,
     })
+    offset_int_enums = {
+        "suggestion_flag": SuggestionFlag,
+    }
 
     data_subtypes = {
         "artist": 0x190,
