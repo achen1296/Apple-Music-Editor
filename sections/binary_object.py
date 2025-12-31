@@ -4,10 +4,9 @@ from .section import Section
 
 
 class String(Section):
+    size_start = 16
     offsets = {
-        # no **Section.offsets: does not have a typical size offset
-        "signature": 0,
-        "string_size": 4,
+        **Section.offsets,
         "string": 16,
     }
 
@@ -55,7 +54,9 @@ class RawStringUTF8(RawString):
 class RawStringUTF16(RawString):
     encoding = "utf_16_le"
 
+
 RawStringUTF16LE = RawStringUTF16
+
 
 class RawStringUTF16BE(RawString):
     encoding = "utf_16_be"
