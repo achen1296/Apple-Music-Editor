@@ -44,7 +44,7 @@ class NestedSmartPlaylistRulesField(IntEnum):
 
 class NestedSmartPlaylistRulesComparison(IntEnum):
     # only one value with unknown meaning, but included in an IntEnum for consistency
-    UNKNOWN_COMPARISON = 0x1
+    _UNKNOWN_NEST_SMART_PLAYLIST_RULES_COMPARISON = 0x1
 
 
 class BooleanField(IntEnum):
