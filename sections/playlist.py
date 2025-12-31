@@ -6,7 +6,6 @@ from .shared_enums import StarRating, SuggestionFlag
 from .binary_object import DataContainerSection, RawStringUTF8, String, boma
 from .section import Section
 from .smart_playlist_options import SmartPlaylistOptions
-from .smart_playlist_rules_list import SLst
 
 
 class ipfa(Section):

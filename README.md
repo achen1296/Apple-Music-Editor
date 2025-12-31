@@ -143,7 +143,7 @@ To determine the size of an unknown section that doesn't have the size in the us
 - Booleans (checkboxes) are always 1 byte, 0 = false/not checked, 1 = true/checked.
 - In the tables below, an offset "..." means all of the offsets in between the previous and next entries (or until the end of the section if at the end) were always 0 in my library (unless I missed any).
   - It is tempting to assume that these are just reserved empty space — but this is not always the case! As I discovered, there are many cases where 0 is the default value indicating that some feature is not used, a pointer is not assigned, etc., and your library file will always contain 0 there if you happen to have never used that feature! For example, did you know that you can favorite artists, albums, and playlists as well as tracks? Neither did I until after exploring every nook and cranny of the GUI for this project, and all of those bytes were 0s until I found them.
-- "(a?)" is shorthand for "(always?)", speculating that an offset always has the value given in the example because it is the only one I have ever seen (this is not given comprehensively, I may have missed some cases).
+- "(a?)" is shorthand for "(always?)", noting that an offset always has the value given in the example in my library (this is not given comprehensively, I may have missed some cases). However, I would assume that in all of these cases another value is possible, otherwise why isn't it 0?
   - In principle, section lengths could be different between sections of the same type. In practice, however, they are always the same for a certain section type, _with the only exceptions being sections containing string data_. Therefore I will not mark these with (a?) and you may assume the example value is the one and only value that ever appears other than this exception.
   - Obviously the section signature will also always be the same for a certain section type, almost by definition.
 
@@ -358,7 +358,7 @@ Seems completely understood: X
 | Offset | Length   | Meaning                                                                                        | Examples Value(s) |
 | ------ | -------- | ---------------------------------------------------------------------------------------------- | ----------------- |
 | 0      | 4        | Section signature, 1 for UTF-16 and 2 for UTF-8                                                | 1, 2              |
-| 4      | 4        | _String_ length, _not_ section length — only measured starting from offset 16                  | 100               |
+| 4      | 4        | Section length _starting from offset 16_ (i.e. the string length)                              | 100               |
 | 8      | 4        | ? (observed changing for album artist, composer, album, genre the first time a song is played) |
 | ...    |
 | 16     | variable | The string data in the specified encoding                                                      | any string        |
@@ -1051,16 +1051,16 @@ One [lpma](#lpma-playlist) can have many ipfa grandchilldren. This is the only (
 
 Another way this kind of section is unique is that the order they are saved in actually matters: it determines the playlist order of the songs.
 
-| Offset | Length | Meaning                                             | Examples Value(s) |
-| ------ | ------ | --------------------------------------------------- | ----------------- |
-| 0      | 4      | Section signature                                   | ipfa              |
-| 4      | 4      | Section length                                      | 68                |
-| 8      | 4      | ? (always a small number, different for each entry) |
-| 12     | 8      | ipfa ID                                             |
-| 20     | 8      | Track ID                                            |
+| Offset | Length | Meaning                                                                                              | Examples Value(s) |
+| ------ | ------ | ---------------------------------------------------------------------------------------------------- | ----------------- |
+| 0      | 4      | Section signature                                                                                    | ipfa              |
+| 4      | 4      | Section length                                                                                       | 68                |
+| 8      | 4      | ? (always a small number, different for each entry)                                                  |
+| 12     | 8      | ipfa ID                                                                                              |
+| 20     | 8      | Track ID                                                                                             |
 | ...    |
-| 40     | 4?     | ?                                                   | 139, 140, 141     |
-| 44     | 8      | ipfa ID again (if last track in playlist?)          |
+| 40     | 2? 4?  | ? (nearly but not always unique, long streaks of values counting up by 1, 2, 3, etc. amid the chaos) | 139, 1111         |
+| 44     | 8      | ipfa ID again (if last track in playlist?)                                                           |
 | ...    |
 
 Grandparents: [lpma](#lpma-playlist)
@@ -1086,6 +1086,9 @@ The length is always 112 bytes (the boma parent always has associated sections l
 | 8      | 4      | Limit count                                                                             |
 | 12     | 1      | Checkbox "match only checked items" — see the notes about [itma](#itma-track) offset 42 |
 | 13     | 1      | Negate ordering method, see below                                                       | 0, 1              |
+| 14     | 1?     | ? (seems like a boolean flag, 0 except for the Genius playlist which has 1)             |
+| ...    |
+| 16     | 1?     | ?                                                                                       | 7 (a?)            |
 | ...    |
 
 The GUI enforces that either matching rules or the limit (offsets 1 and 2) must be enabled to save the smart playlist (otherwise it would just yield all songs).
@@ -1126,11 +1129,11 @@ Parents: [boma](#boma-binary-object) (subtype 0xCA)
 
 "Smart playList"?
 
-Seems completely understood: X
+Seems completely understood: ✓
 
 Length is always 136.
 
-**_<h1>All numbers in this section type are big-endian!!</h1>_**
+**_<h1>All numbers and strings in this section type and its descendants are big-endian!!</h1>_**
 
 | Offset | Length | Meaning                                           | Examples Value(s) |
 | ------ | ------ | ------------------------------------------------- | ----------------- |
@@ -1149,53 +1152,78 @@ I refer to this as "conjunction", as in grammatical, not logical conjunction (wh
 
 Grandparents: [lpma](#lpma-playlist)
 
-Parents: [boma](#boma-binary-object) (subtype 0xC9)
+Parents:
 
-Children:
-
-- self (nested "Match all/any of the following rules" lists)
+- [boma](#boma-binary-object) (subtype 0xC9)
 - [Smart Playlist Rule](#smart-playlist-rule)
+
+Children: [Smart Playlist Rule](#smart-playlist-rule)
+
+(SLst and smart playlist rule may alternate being nested inside each other to an unlimited depth, so technically SLst can be its own grandparent as well.)
 
 # Smart Playlist Rule
 
 [Back to TOC](#table-of-contents)
 
-Seems completely understood: ✓ ([almost](#unknown-smart-playlist-field))
+Seems completely understood: [almost](#unknown-smart-playlist-field)
 
-Length is 56 + offset 54 value. For non-strings, it is always 124 (offset 54 is always 68).
+Length is always 56.
 
-**_<h1>All numbers and UTF-16 strings in this section type are big-endian!!</h1>_**
+**_<h1>All numbers and strings in this section type and its descendants are big-endian!!</h1>_**
 
-| Offset | Length                                       | Meaning                        | Examples Value(s) |
-| ------ | -------------------------------------------- | ------------------------------ | ----------------- |
-| 0      | 4                                            | Field                          | see below         |
-| 4      | 4                                            | Comparison method              | see below         |
+| Offset | Length | Meaning                                                                                    | Examples Value(s) |
+| ------ | ------ | ------------------------------------------------------------------------------------------ | ----------------- |
+| 0      | 4      | Subtype (field)                                                                            | see below         |
+| 4      | 4      | Comparison method                                                                          | see below         |
+| 8      | 4?     | ? (only nonzero for [nested smart playlist rules list](#nested-smart-playlist-rules-list)) | 0x 10 00 00 00    |
 | ...    |
-| 54     | 2                                            | Size _starting from offset 56_ |
-| 56     | variable for strings, 68 for everything else | Arguments - see below          |
+| 52     | 4?     | Associated sections length _starting from offset 56_ (i.e. not including this section)     |
 
 Unfortunately, no, offset 0 does not match the related boma subtype in all cases (though it does in some).
 
-In all cases for offset 4, it looks like the bit 0x 02 00 00 00 is set to negate the comparison (but not all comparisons have a counterpart with this bit set, which makes me wonder if the program would accept these values).
-
-When offset 56 is not a string:
-
-- it seems to be broken into chunks of size 8
-  - even though 68 is not a multiple of 8 — see details below, the last half-chunk doesn't get used anyway
-  - I will call the 8-byte chunk at offset 56 "chunk 0", offset 64 "chunk 1", etc. (in the code: "argument_0", "argument_1", etc.)
-- by default, chunks 0, 2, 3, and 5 are terminated by a 0x01 byte, and everything else is 0x00
-  - this fact, along with the actual way the arguments are filled into these chunks (0 and 3 are used most often), could also suggest that they are supposed to be chunks of size 8, 16, 8, 16, and 20 instead, however under this interpretation the one case where a 16-byte chunk gets used ([Dates](#dates)), it is split in half anyway
-- each chunk is used for one parameter of the smart playlist rule (even if it isn't large enough to require all of its bytes)
-- unused chunks are left with the default values above
-- as you will see below, although there is potential to have 8.5 8-byte chunks, only the first 4 (0-3) actually get used
-
-See below for full details on each offset depending on what type the match value is.
+In all cases for offset 4, it looks like the bit 0x 02 00 00 00 is set to negate the comparison (but not all comparisons have a counterpart with this bit set available through the GUI, which makes me wonder if the program would accept these values).
 
 Parents: [SLst](#slst-smart-playlist-rules-list)
 
+Children:
+
+- [SLst](#slst-smart-playlist-rules-list) (see [Nested Smart Playlist Rules List](#nested-smart-playlist-rules-list))
+- Smart Playlist Rule Arguments, however as the contents of this section type depend so heavily on the contents of the parent smart playlist rule, they will be described below instead of in a separate section of this document
+- [Raw strings](#raw-string): string argument in UTF-16 _big-endian!!_
+
+When the child is smart playlist rule arguments, it looks like this:
+
+It always has length 68.
+
+| Offset | Length | Meaning                  | Examples Value(s) |
+| ------ | ------ | ------------------------ | ----------------- |
+| 0      | 8      | Argument 0               | default 1         |
+| 8      | 8      | Argument 1               | default 0         |
+| 16     | 8      | Argument 2               | default 1         |
+| 24     | 8      | Argument 3               | default 1         |
+| 32     | 8      | Argument 4? (never used) | default 0         |
+| 40     | 8      | Argument 5? (never used) | default 1         |
+| 48     | 8      | Argument 6? (never used) | default 0         |
+| 56     | 8      | Argument 7? (never used) | default 0         |
+| ...    |
+
+- The fact that arguments 0, 2, 3, and 5 are by default terminated with a 0x01 byte, along with the actual way the arguments are filled into these arguments (0 and 3 are used most often), could also suggest that they are supposed to be arguments of size 8, 16, 8, 16, and 20 instead, however under this interpretation the one case where a 16-byte argument gets used ([Dates](#dates)), it is split in half anyway.
+- Each argument is used for one parameter of the smart playlist rule (even if it isn't large enough to require all of its bytes)
+- Unused arguments (those not mentioned as having a specific value below) are left with the default values above
+
+## Nested Smart Playlist Rules List
+
+Offset 0: 0x 00 00 00 00
+
+Offset 4: 0x 00 00 00 01
+
+Offset 8: 0x 01 00 00 00 (only nonzero for this section type)
+
+Child: [SLst](#slst-smart-playlist-rules-list)
+
 ## Booleans
 
-Offset 0 field enum values:
+Offset 0 subtype (field) enum values:
 
 - 0x 00 00 00 25 = "album artwork", i.e. has artwork (true) or not (false)
 - 0x 00 00 00 1D = "checked" (referred to as "disabled" at [itma](#itma-track) offset 42; _just like there, this uses reversed values compared to other booleans_)
@@ -1207,7 +1235,7 @@ Offset 4 comparison method enum values:
 - 0x 00 00 00 01 = is true
 - 0x 02 00 00 01 = is false
 
-Offset 56 arguments: not used (all default as described above)
+Child: Smart Playlist Rule Arguments, but all not used (all default as described above)
 
 ## Numerics
 
@@ -1235,10 +1263,10 @@ Offset 4:
 - 0x 00 00 00 40 = is less than
 - 0x 00 00 01 00 = is in the range
 
-Offset 56:
+Child: Smart Playlist Rule Arguments
 
-- chunk 0: first argument
-- chunk 3: second argument
+- argument 0: first argument
+- argument 3: second argument
   - it is always zero except for "is in the range", since this is the only comparison method with 2 arguments
 - for star ratings, uses these values:
   - 0 stars = -20 (0x FF FF FF FF FF FF FF EC)
@@ -1263,28 +1291,28 @@ Offset 4:
 - 0x 02 00 02 00 = is not in the last
 - 0x 00 00 01 00 = is in the range (same as "is", the difference is in offset 56)
 
-Offset 56:
+Child: Smart Playlist Rule Arguments
 
 The Apple Music GUI only allows selecting with a precision of 1 day. (It also seems to handle time zones poorly — the date you select may have shifted by 1 when you open the rules again.)
 
 - For "is" and "is not":
-  - chunk 0: midnight of the date chosen, e.g. 0x 00 00 00 00 E5 76 23 80 = 2025-12-28T00:00:00
-  - chunk 3: 23:59:59 of the same date, e.g. 0x 00 00 00 00 E5 77 74 FF = 2025-12-28T23:59:59
+  - argument 0: midnight of the date chosen, e.g. 0x 00 00 00 00 E5 76 23 80 = 2025-12-28T00:00:00
+  - argument 3: 23:59:59 of the same date, e.g. 0x 00 00 00 00 E5 77 74 FF = 2025-12-28T23:59:59
   - this suggests it is actually using numeric "is in the range" and "is not in the range" internally (is "is not in the range" a valid value for other numerics even though it's not presented in the GUI?)
   - would the Apple Music program accept more precise bounds edited in?
 - For "is after":
-  - chunk 0 and chunk 3 both set to 23:59:59 of the date chosen
+  - argument 0 and argument 3 both set to 23:59:59 of the date chosen
   - seems to be using "is greater than"
 - For "is before":
-  - chunk 0 and chunk 3 both set to midnight of the date
+  - argument 0 and argument 3 both set to midnight of the date
   - seems to be using "is less than"
 - For "is in the last" and "is not in the last":
-  - chunk 0 and chunk 3 both filled in with 0x 2D AE repeated
+  - argument 0 and argument 3 both filled in with 0x 2D AE repeated
     - not sure what the significance of this value is
     - I find it amusing that reading it aloud sounds a bit like "today", which might just be a coincidence
-  - chunk 1: the count, negated
+  - argument 1: the count, negated
     - for example, for "is in the last 1 \<unit\>", you get 0x FF FF FF FF FF FF FF FF (-1)
-  - chunk 2:
+  - argument 2:
     - 0x 00 00 00 00 00 01 51 80 = 86,400 seconds = 1 day → unit is days
     - 0x 00 00 00 00 00 09 3a 80 = 604,800 seconds → weeks
     - 0x 00 00 00 00 00 28 19 A0 = 2,628,000 seconds = 86,400 \* 365 / 12 → months
@@ -1292,8 +1320,8 @@ The Apple Music GUI only allows selecting with a precision of 1 day. (It also se
     - edited in a positive count
     - edited in some other unit
 - For "is in the range":
-  - chunk 0: midnight of the first date chosen
-  - chunk 3: 23:59:59 of the second date chosen
+  - argument 0: midnight of the first date chosen
+  - argument 3: 23:59:59 of the second date chosen
   - if you select the same date for both bounds, close the rules list, and reopen it, the Apple Music GUI will show it as an "is" rule, proving that there is literally no difference!
 
 ## Enums
@@ -1315,9 +1343,9 @@ Offset 4:
   - 0x 00 00 04 00 = is
   - 0x 02 00 04 00 = is not
 
-Offset 56:
+Child: Smart Playlist Rule Arguments
 
-- chunk 0 and chunk 3 are both set identically to the enum value argument
+- argument 0 and argument 3 are both set identically to the enum value argument
 - Suggestion flags:
   - set to value as described under [itma](#itma-track) (value of 1 is not used)
 - Cloud status:
@@ -1380,7 +1408,7 @@ Offset 4:
 - 0x 01 00 00 04 = begins with
 - 0x 01 00 00 08 = ends with
 
-Offset 56: string encoded in UTF-16
+Child: [Raw string](#raw-string) argument in UTF-16 _big-endian!!_
 
 ## Playlists
 
@@ -1400,10 +1428,10 @@ Offset 4:
 - 0x 00 00 00 01 = is
 - 0x 02 00 00 01 = is not
 
-Offset 56:
+Child: Smart Playlist Rule Arguments
 
-- chunk 0: playlist ID _with bytes reversed compared to the usual order_ (matching how everything else is big-endian in here)
-- chunk 3: same playlist ID _only if this smart playlist is actually a playlist folder_, otherwise 0
+- argument 0: playlist ID _with bytes reversed compared to the usual order_ (matching how everything else is big-endian in here)
+- argument 3: same playlist ID _only if this smart playlist is actually a playlist folder_, otherwise 0
 
 ## Unknown Smart Playlist Field
 
@@ -1411,7 +1439,7 @@ Offset 0: 0x 00 00 00 A4
 
 Offset 4: 0x 00 00 00 01
 
-Offset 56: all default
+Child: Smart Playlist Rule Arguments, all default
 
 This only appears only inside of the "TV & Movies" special playlist, and there is no corresponding value inside of the GUI to put a name to it. From the rest of the data, I'm guessing it's a boolean.
 

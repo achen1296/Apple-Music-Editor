@@ -22,6 +22,10 @@ class Section:
 
     fixed_size: int | None = None
     """ While most sections are always the same size, this is intended to be used only for sections that do not have their size encoded in their data (on the off chance the size changes one day in the future, it would be better not to specify a fixed size). """
+    size_start: int = 0
+    """ Added to value of size offset, may be changed by subclass when size does not start from the beginning of the section. """
+    total_size_start: int = 0
+    """ Added to value of total size offset, may be changed by subclass when total size does not start from the beginning of the section. """
 
     subsection_class: Type["Section"] | None = None
     subsection_class_by_subtype: dict[int, Type["Section"]] = {}
@@ -45,7 +49,7 @@ class Section:
     def __init__(self, data: BytesIO, size_hint: int | None = None):
         """ `size_hint` is only needed if there is neither a size offset nor a `fixed_size` class attribute given, and should come from the parent's `self.get_int("total_size") - self.get_int("size")` (this assumes there is only one child section). This is only supposed to be used for certain `boma` children which lack both a size offset and a fixed size, and as a last resort for unknown section types.
 
-        (If a section type has neither a size offset nor a fixed size, but it does have some other way to determine its size from its own data, then `fixed_size` can be used to read up to that point, then the subclass should override `__init__` to read the rest of the data.) """
+        (If a section type has neither a size offset nor a fixed size, but it does have some other way to determine its size from its own data, then the subclass should just extend `__init__`.) """
 
         self._edited = False
         self._changed_size = False
@@ -56,9 +60,11 @@ class Section:
 
         # read this section
         if "size" in self.offsets:
-            self._data = bytearray(data.read(self.offsets["size"] + self.offset_int_sizes["size"]))
-            self._data += data.read(self.size_from_data - (self.offsets["size"] + self.offset_int_sizes["size"]))
-            assert self.size == self.size_from_data  # make sure read() did not stop short
+            size_end_pos = self.offsets["size"] + self.offset_int_sizes["size"]
+            self._data = bytearray(data.read(size_end_pos))
+            read_end_pos = self.size_from_data + self.size_start
+            self._data += data.read(read_end_pos - size_end_pos)
+            assert self.size == read_end_pos # make sure read() did not stop short
         elif self.fixed_size is not None:
             self._data = bytearray(data.read(self.fixed_size))
             assert self.size == self.fixed_size  # make sure read() did not stop short
@@ -79,7 +85,7 @@ class Section:
         self.subsections: list["Section"] = []
 
         if "total_size" in self.offsets:
-            size_hint_for_child = self.total_size_from_data - self.size
+            size_hint_for_child = self.total_size_from_data + self.total_size_start - self.size
         else:
             size_hint_for_child = None
 
@@ -111,7 +117,7 @@ class Section:
 
         if "total_size" in self.offsets:
             # total size is preferred if both are available because it has a better chance of being able to proceed for unknown sections
-            total_size = self.total_size_from_data
+            total_size = self.total_size_from_data + self.total_size_start
             while data.tell() < start_offset + total_size:
                 append_subsection()
             assert data.tell() == start_offset + total_size
@@ -126,7 +132,7 @@ class Section:
     def size(self):
         if "size" in self.offsets:
             if not self._updated_size_after_change and self._changed_size:
-                self.set_int("size", len(self._data))
+                self.set_int("size", len(self._data) - self.size_start)
                 # do not change back to self._changed_size = False because supersections might not have seen tha the size changed yet!
                 # better to update the size multiple times redundantly than not to set it at all
                 self._updated_size_after_change = True
@@ -142,7 +148,7 @@ class Section:
         """ Size of this section and all subsections, referred to as "associated sections length" on vollink """
         if "total_size" in self.offsets and any(s._changed_size or s._subsection_count_changed for s in self):
             total_size = sum(s.size for s in self)
-            self.set_int("total_size", total_size)
+            self.set_int("total_size", total_size - self.total_size_start)
             return total_size
         else:
             return sum(s.size for s in self)
@@ -289,13 +295,13 @@ class Section:
         else:
             offset, size = key
 
-        value = _unpack_int(self._data, offset, size=size)
+        value: int = _unpack_int(self._data, offset, size=size)
 
         if e is not None:
             try:
                 value = e(value)
             except ValueError:
-                print(f"warning: when trying to interpret value at offset named {key} as {e} found unknown value {value} instead")
+                print(f"warning: when trying to interpret value at offset named {key} as {e} found unknown value {value} in the data instead")
 
         return value
 

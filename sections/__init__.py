@@ -11,10 +11,10 @@ from .smart_playlist_options import (LimitSelectionMethod,
                                      LimitSelectionMethodModifier, LimitUnit,
                                      SmartPlaylistOptions)
 from .smart_playlist_rule import (BooleanComparison, BooleanField, CloudStatus,
-                                  DateComparison, DateField, EnumComparison,
-                                  EnumField, Location, MediaKind,
-                                  NumericComparison, NumericField,
-                                  PlaylistComparison, PlaylistField,
+                                  Conjunction, DateComparison, DateField,
+                                  EnumComparison, EnumField, Location,
+                                  MediaKind, NumericComparison, NumericField,
+                                  PlaylistComparison, PlaylistField, SLst,
                                   SmartPlaylistRule,
                                   StarRatingSmartPlaylistArgument,
                                   StringComparison, StringField)
@@ -43,4 +43,5 @@ Track = itma
 
 PlaylistList = lPma
 Playlist = lpma
-SmartPlaylistRules = SLst
+PlaylistItem = ipfa
+SmartPlaylistRulesList = SLst
