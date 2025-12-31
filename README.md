@@ -405,6 +405,8 @@ The values for itma and track numerics are alternating by nature as each itma al
 
 The counter seems to be 4 bytes since it is followed by unrelated data inside of some sections after that many bytes.
 
+This finally explains to me why these offsets would chaotically change after unrelated edits, why they are low-ish numbers, and why they are often consecutive/incrementing by 2 depending on the section type.
+
 The purpose of this counter remains unknown.
 
 # plma (Library Master)
