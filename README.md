@@ -57,6 +57,8 @@ So far I have successfully edited simple things like the play count of a track, 
 ---
 
 - [plma (Library Master)](#plma-library-master)
+- [1F6](#1f6)
+- [1FF](#1ff)
 
 ---
 
@@ -424,14 +426,56 @@ Children: [boma](#boma-binary-object)
 
 Grandchildren:
 
-- 0x1F6 = ? (contains an ID? not repeated anywhere)
-- 0x1FF = ? (contains 2 copies of library ID in my library) (_note that this appears to have a subsection with the signature for a UTF-16 string signature but it isn't one_)
+- 0x1F6 = [1F6](#1f6)
+- 0x1FF = [1FF](#1ff)
 - [Strings](#string-section):
   - boma subtype 0x1F8 = media folder URI ("file://localhost/C:/...")
 - [Raw Strings](#raw-string)
   - 0x1FC = imported iTunes .itl file (UTF-8)
   - 0x1FD = media folder path (UTF-16)
   - 0x200 = exactly the same as 0x1FD
+
+# 1F6
+
+[Back to TOC](#table-of-contents)
+
+Seems completely understood: X
+
+1F6 is a (hopefully) temporary name derived from the boma parent subtype.
+
+Length is always 20.
+
+| Offset | Length | Meaning                                                                                        | Examples Value(s)                  |
+| ------ | ------ | ---------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 0      | 4?     | ? (not a signature, not a section length)                                                      | 0x 01 00 14 00, 0x 00 01 00 25     |
+| 4      | 16?    | ? (an ID? a hash? not found anywhere else in library, nor in [artwork.sqlite](#artworksqlite)) | 0x00DA6A686DC46CA4CBCB01A6671386BF |
+
+Grandparents: [plma](#plma-library-master)
+
+Parents: [boma](#boma-binary-object) (subtype 0x1F6)
+
+# 1FF
+
+[Back to TOC](#table-of-contents)
+
+Seems completely understood: X
+
+1FF is a (hopefully) temporary name derived from the boma parent subtype.
+
+Length is always 44.
+
+? (contains 2 copies of library ID in my library, only 1 copy in a fresh one; something to do with iTunes?) (_note that this appears to have a subsection with the signature for a UTF-16 string signature but it isn't one_)
+
+| Offset | Length | Meaning                           | Examples Value(s)                                                         |
+| ------ | ------ | --------------------------------- | ------------------------------------------------------------------------- |
+| 0      | 8?     | ?                                 | 1 (a?) (_do not confuse with [UTF-16 string](#string-section) signature_) |
+| 8      | 8      | Library ID                        |
+| 16     | 8      | Library ID again sometimes (why?) |
+| ...    |
+
+Grandparents: [plma](#plma-library-master)
+
+Parents: [boma](#boma-binary-object) (subtype 0x1FF)
 
 # lama (Album List)
 

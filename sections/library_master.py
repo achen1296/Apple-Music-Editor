@@ -5,10 +5,29 @@ from .binary_object import (DataContainerSection, RawStringUTF8,
 from .section import Section
 
 
+class _1F6(Section):
+    offsets = {
+        # no **Section.offsets: does not have a typical size offset
+        # ???
+    }
+
+
+class _1FF(Section):
+    offsets = {
+        # no **Section.offsets: does not have a typical size offset
+        "library_id": 8,
+        "library_id_2": 16,
+    }
+    offset_int_sizes = defaultdict(lambda: 4, {
+        "library_id": 8,
+        "library_id_2": 8,
+    })
+
+
 class bomaLibraryMaster(boma):
     subsection_class_by_subtype = {
-        # 0x1F6: , use Unknown for now
-        # 0x1F6: , use Unknown for now
+        0x1F6: _1F6,
+        0x1FF: _1FF,
         0x1F8: String,
         0x1FC: RawStringUTF8,
         0x1FD: RawStringUTF16,
