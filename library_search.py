@@ -26,6 +26,26 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
+    def discard(self, count: int):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for i, s in enumerate(sections):
+                if i >= count:
+                    yield s
+
+        self.search_actions.append(f)
+        return self
+
+    def limit(self, count: int):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            for i, s in enumerate(sections):
+                if i < count:
+                    yield s
+                else:
+                    break
+
+        self.search_actions.append(f)
+        return self
+
     def search(self, *sections: Section):
         sections: Iterable[Section]
         for f in self.search_actions:
@@ -106,6 +126,39 @@ class LibrarySearcher:
                     if isinstance(s.parent, type):
                         yield s.parent
                     seen_parents.add(s.parent)
+
+        self.search_actions.append(f)
+        return self
+
+    def ancestors(self):
+        def f(sections: Iterable[Section]) -> Iterable[Section]:
+            seen_ancestors: set[Section] = set()
+
+            for s in sections:
+                while (
+                    s.parent is not s
+                    and s.parent not in seen_ancestors
+                ):
+                    yield s.parent
+                    seen_ancestors.add(s.parent)
+                    s = s.parent
+
+        self.search_actions.append(f)
+        return self
+
+    def ancestors_of_type[T: Section](self, type: Type[T]):
+        def f(sections: Iterable[Section]) -> Iterable[T]:
+            seen_ancestors: set[Section] = set()
+
+            for s in sections:
+                while (
+                    s.parent is not s
+                    and s.parent not in seen_ancestors
+                ):
+                    if isinstance(s.parent, type):
+                        yield s.parent
+                    seen_ancestors.add(s.parent)
+                    s = s.parent
 
         self.search_actions.append(f)
         return self
