@@ -19,7 +19,7 @@ if __name__ == "__main__":
     start = 0
     size = 4
 
-    r = [] # fill in a specific list of offsets if you want to narrow focus to them
+    r = []  # fill in a specific list of offsets if you want to narrow focus to them
     # e.g. r = [20, 24, 36]
 
     offset_values: dict[int, dict[str, int]] = {}
@@ -37,7 +37,7 @@ if __name__ == "__main__":
             if len(b) < size:
                 number = f"<too short for int of size {size}>"
             else:
-                number = unpack_int(b, 0, size=size)
+                number = s.get_int((i, size))
 
             key = f"{b.hex()} {number}{unicode}"
 
