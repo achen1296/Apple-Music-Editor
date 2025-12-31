@@ -52,6 +52,7 @@ class BooleanField(IntEnum):
     CHECKED = 0x1D
     COMPILATION = 0x1F
     PURCHASED = 0x29
+    _UNKNOWN_TV_AND_MOVIES = 0xA4  # see readme
 
 
 class BooleanComparison(IntEnum):
