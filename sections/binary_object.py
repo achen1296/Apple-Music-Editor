@@ -79,7 +79,7 @@ class boma(Section):
         self.subtype = self.get_int("subtype")  # convenient to have this
 
 
-class DataContainerSection(Section):
+class BinaryObjectParentSection(Section):
     """ Add methods for boma subsections """
 
     data_subtypes: dict[str, int] = {}

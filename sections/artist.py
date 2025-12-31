@@ -1,9 +1,9 @@
 from collections import defaultdict
 
-from .shared_enums import StarRating, SuggestionFlag
-
-from .binary_object import DataContainerSection, RawStringUTF8, String, boma
+from .binary_object import (BinaryObjectParentSection, RawStringUTF8, String,
+                            boma)
 from .section import Section
+from .shared_enums import StarRating, SuggestionFlag
 
 
 class bomaArtist(boma):
@@ -14,7 +14,7 @@ class bomaArtist(boma):
     }
 
 
-class iAma(DataContainerSection):
+class iAma(BinaryObjectParentSection):
     expected_signature = b"iAma"
     subsection_class = bomaArtist
     offsets = {

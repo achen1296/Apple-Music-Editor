@@ -1,7 +1,8 @@
 from collections import defaultdict
 from enum import IntEnum
 
-from .binary_object import DataContainerSection, RawStringUTF8, String, boma
+from .binary_object import (BinaryObjectParentSection, RawStringUTF8, String,
+                            boma)
 from .section import Section
 from .shared_enums import StarRating, SuggestionFlag
 
@@ -86,7 +87,7 @@ class ContentRating(IntEnum):
     PARENT_GUIDANCE = 4  # ?
 
 
-class itma(DataContainerSection):
+class itma(BinaryObjectParentSection):
     expected_signature = b"itma"
     subsection_class = bomaTrack
     offsets = {

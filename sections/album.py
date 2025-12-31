@@ -1,10 +1,9 @@
 from collections import defaultdict
 from enum import IntEnum
 
-from .shared_enums import StarRating, SuggestionFlag
-
-from .binary_object import DataContainerSection, String, boma
+from .binary_object import BinaryObjectParentSection, String, boma
 from .section import Section
+from .shared_enums import StarRating, SuggestionFlag
 
 
 class bomaAlbum(boma):
@@ -20,7 +19,7 @@ class StarRatingInheritance(IntEnum):
     INHERITED = 0x20
 
 
-class iama(DataContainerSection):
+class iama(BinaryObjectParentSection):
     expected_signature = b"iama"
     subsection_class = bomaAlbum
     offsets = {

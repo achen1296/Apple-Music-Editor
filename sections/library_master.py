@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from .binary_object import (DataContainerSection, RawStringUTF8,
+from .binary_object import (BinaryObjectParentSection, RawStringUTF8,
                             RawStringUTF16, String, boma)
 from .section import Section
 
@@ -35,7 +35,7 @@ class bomaLibraryMaster(boma):
     }
 
 
-class plma(DataContainerSection):
+class plma(BinaryObjectParentSection):
     expected_signature = b"plma"
     subsection_class = bomaLibraryMaster
     offsets = {

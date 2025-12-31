@@ -1,6 +1,6 @@
 from .album import StarRatingInheritance, bomaAlbum, iama, lama
 from .artist import bomaArtist, iAma, lAma
-from .binary_object import DataContainerSection, boma
+from .binary_object import BinaryObjectParentSection, boma
 from .header import hfma, hsma
 from .library_master import _1F6, _1FF, bomaLibraryMaster, plma
 from .playlist import (SLst, SmartPlaylistOptions, SpecialPlaylist,
@@ -18,11 +18,10 @@ from .smart_playlist_rule import (BooleanComparison, BooleanField, CloudStatus,
                                   SmartPlaylistRule,
                                   StarRatingSmartPlaylistArgument,
                                   StringComparison, StringField)
-from .smart_playlist_rules_list import Conjunction, SLst, SmartPlaylistRule
 from .track import (ContentRating, Downloaded, TrackNumerics, TrackPlaysSkips,
                     Video, bomaTrack, itma, ltma)
 
-Data = boma
+BinaryObject = boma
 
 Boundary = hsma
 SectionHeader = hsma

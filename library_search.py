@@ -162,7 +162,7 @@ class LibrarySearcher:
     def data_subsections_of_subtype(self, subtype: str | int):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, DataContainerSection):
+                if isinstance(s, BinaryObjectParentSection):
                     yield s.data_subsection_of_subtype(subtype)
 
         self.search_actions.append(f)
@@ -171,7 +171,7 @@ class LibrarySearcher:
     def match_sub_int(self, subtype: str | int, key: str | tuple[int, int], value: int):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, DataContainerSection) and s.get_sub_int(subtype, key) == value:
+                if isinstance(s, BinaryObjectParentSection) and s.get_sub_int(subtype, key) == value:
                     yield s
 
         self.search_actions.append(f)
@@ -183,7 +183,7 @@ class LibrarySearcher:
 
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, DataContainerSection):
+                if isinstance(s, BinaryObjectParentSection):
                     string = s.get_sub_string(subtype)
                     if not case_sensitive:
                         string = string.lower()
@@ -196,7 +196,7 @@ class LibrarySearcher:
     def re_match_sub_string(self, subtype: str | int, pattern: str | re.Pattern, *, re_flags=re.I):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, DataContainerSection):
+                if isinstance(s, BinaryObjectParentSection):
                     string = s.get_sub_string(subtype)
                     if re.search(pattern, string, re_flags):
                         yield s

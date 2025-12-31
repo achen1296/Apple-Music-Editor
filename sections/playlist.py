@@ -1,10 +1,12 @@
 from collections import defaultdict
 from enum import IntEnum
 
-from .shared_enums import StarRating, SuggestionFlag
+from .smart_playlist_rule import SLst
 
-from .binary_object import DataContainerSection, RawStringUTF8, String, boma
+from .binary_object import (BinaryObjectParentSection, RawStringUTF8, String,
+                            boma)
 from .section import Section
+from .shared_enums import SuggestionFlag
 from .smart_playlist_options import SmartPlaylistOptions
 
 
@@ -45,7 +47,7 @@ class SpecialPlaylist(IntEnum):
     PURCHASED = 0x_13_00
 
 
-class lpma(DataContainerSection):
+class lpma(BinaryObjectParentSection):
     expected_signature = b"lpma"
     subsection_class = bomaPlaylist
     offsets = {
