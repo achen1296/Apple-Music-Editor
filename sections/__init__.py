@@ -1,6 +1,8 @@
 from .album import StarRatingInheritance, bomaAlbum, iama, lama
 from .artist import bomaArtist, iAma, lAma
-from .binary_object import BinaryObjectParentSection, boma
+from .binary_object import (AnyString, BinaryObjectParentSection, RawString,
+                            RawStringUTF8, RawStringUTF16, RawStringUTF16BE,
+                            RawStringUTF16LE, String, boma)
 from .header import hfma, hsma
 from .library_master import _1F6, _1FF, bomaLibraryMaster, plma
 from .playlist import (SLst, SmartPlaylistOptions, SpecialPlaylist,
@@ -10,12 +12,16 @@ from .shared_enums import StarRating, SuggestionFlag
 from .smart_playlist_options import (LimitSelectionMethod,
                                      LimitSelectionMethodModifier, LimitUnit,
                                      SmartPlaylistOptions)
-from .smart_playlist_rule import (BooleanComparison, BooleanField, CloudStatus,
-                                  Conjunction, DateComparison, DateField,
-                                  EnumComparison, EnumField, Location,
-                                  MediaKind, NumericComparison, NumericField,
+from .smart_playlist_rule import (AnyComparison, AnyField, BooleanComparison,
+                                  BooleanField, CloudStatus, Conjunction,
+                                  DateComparison, DateField, EnumComparison,
+                                  EnumField, Location, MediaKind,
+                                  NestedSmartPlaylistRulesComparison,
+                                  NestedSmartPlaylistRulesField,
+                                  NumericComparison, NumericField,
                                   PlaylistComparison, PlaylistField, SLst,
                                   SmartPlaylistRule,
+                                  SmartPlaylistRuleArguments,
                                   StarRatingSmartPlaylistArgument,
                                   StringComparison, StringField)
 from .track import (ContentRating, Downloaded, TrackNumerics, TrackPlaysSkips,
