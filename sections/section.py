@@ -64,7 +64,7 @@ class Section:
             self._data = bytearray(data.read(size_end_pos))
             read_end_pos = self.size_from_data + self.size_start
             self._data += data.read(read_end_pos - size_end_pos)
-            assert self.size == read_end_pos # make sure read() did not stop short
+            assert self.size == read_end_pos  # make sure read() did not stop short
         elif self.fixed_size is not None:
             self._data = bytearray(data.read(self.fixed_size))
             assert self.size == self.fixed_size  # make sure read() did not stop short
@@ -285,7 +285,7 @@ class Section:
     def get_int(
             self, key: str | tuple[int, int],
             *, _unpack_int=unpack_int,  # this argument is only for BigEndianSection subclass
-    ):
+    ) -> int:
         e = None
 
         if isinstance(key, str):

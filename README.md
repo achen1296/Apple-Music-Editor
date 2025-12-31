@@ -39,7 +39,13 @@ So far I have successfully edited simple things like the play count of a track, 
 
 - [General Notes](#general-format-notes)
 - [Consistent Naming of Fields](#consistent-naming-of-fields)
+
+---
+
 - [Time Zone Handling](#time-zone-handling)
+
+---
+
 - [Encryption and Compression](#encryption-and-compression)
 - [Section Structure](#section-structure)
 
@@ -53,6 +59,10 @@ So far I have successfully edited simple things like the play count of a track, 
 - [boma (Binary Object)](#boma-binary-object)
 - [String Section](#string-section)
 - [Raw String](#raw-string)
+
+---
+
+- [Global Counter](#global-counter)
 
 ---
 
@@ -379,6 +389,24 @@ These are in UTF-8 or UTF-16. It is not clear why some strings are inside of sec
 
 Parents: [boma](#boma-binary-object), many different subtypes
 
+# Global Counter
+
+[Back to TOC](#table-of-contents)
+
+I have discovered that there is a counter running through many of the section types below. It increments by 1 in the order the sections appear in the file.
+
+- (I do not believe I have discovered where the counter starts presumably at 0 or 1, because the following began at 96 in a small library, and at 1002 in a larger one, suggesting a correlation with how many of something else is present in the library)
+- [itma](#itma-track) offset 24
+- [track numerics](#track-numerics) offset 0
+- [lpma](#lpma-playlist) offset 26
+- [ipfa](#ipfa-playlist-item) offset 8
+
+The values for itma and track numerics are alternating by nature as each itma always has one track numerics grandchild. Likewise, since ipfa's are grandchildren of lpma, there will be one counter value taken by an lpma followed by a streak of them taken by ipfa grandchildren.
+
+The counter seems to be 4 bytes since it is followed by unrelated data inside of some sections after that many bytes.
+
+The purpose of this counter remains unknown.
+
 # plma (Library Master)
 
 [Back to TOC](#table-of-contents)
@@ -654,7 +682,7 @@ Seems completely understood: X
 | 8       | 2? 4?   | ? (usually in range 1000-3000, observed changing when equalizer is set but doesn't matter which equalizer, for other reasons as well)                                                                                                      | 0x F3 0C 00 00                           |
 | 12      | 4       | Number of subsections                                                                                                                                                                                                                      | 18                                       |
 | 16      | 8       | Track ID                                                                                                                                                                                                                                   | 0xD5F6F65777A704BC                       |
-| 24      | 4       | ? (counts up by 2 starting from 1002 in the order the tracks appear in the file; observed changing on first play or skip of a song)                                                                                                        | 1002                                     |
+| 24      | 4       | See [Global Counter](#global-counter)                                                                                                                                                                                                      |
 | ...     |
 | 30      | 1       | Checkbox "Skip when shuffling"                                                                                                                                                                                                             | 0 or 1                                   |
 | 31      | 1       | ? (usually 1, but sometimes 0, looks like another boolean, observed changing from 0 to 1 on first play of a song)                                                                                                                          |
@@ -811,7 +839,8 @@ I discovered that there can be 2 of the [track numerics](#track-numerics) sectio
 
 | Offset | Length | Meaning                                                                                                                                                                           | Examples Value(s)                                          |
 | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| 0      | 4      | ? (a counter value incrementing by 2 from 1003, perhaps to avoid colliding with other signatures like string sections, observed changing on first play/skip of a song)            | 1003                                                       |
+| 0      | 4      | See [Global Counter](#global-counter)                                                                                                                                             |
+| ...    |
 | 4      | 4?     | ? (also the download flag from [itma](#itma-track) offset 57?)                                                                                                                    |
 | 8      | 8      | ? (an ID? doesn't appear elsewhere)                                                                                                                                               |
 | 16     | 4?     | ?                                                                                                                                                                                 | 1                                                          |
@@ -975,8 +1004,7 @@ Playlist folders are implemented as special playlists, along with the parent fol
 | 16     | 4      | Number of tracks in playlist                                                                                                 | 10                 |
 | ...    |
 | 22     | 4      | Playlist creation date                                                                                                       | 3818534400         |
-| 26     | 1? 2?  | ? (observed changing when many other fields are changed)                                                                     |
-| 28     | 2?     | ? (always 0-3)                                                                                                               |
+| 26     | 4      | See [Global Counter](#global-counter)                                                                                        |
 | 30     | 8      | Playlist ID                                                                                                                  | 0x883E9012A290710E |
 | 38     | 1? 4?  | ? (always 1)                                                                                                                 | 0x883E9012A290710E |
 | ...    |
@@ -1051,16 +1079,16 @@ One [lpma](#lpma-playlist) can have many ipfa grandchilldren. This is the only (
 
 Another way this kind of section is unique is that the order they are saved in actually matters: it determines the playlist order of the songs.
 
-| Offset | Length | Meaning                                                                                              | Examples Value(s) |
-| ------ | ------ | ---------------------------------------------------------------------------------------------------- | ----------------- |
-| 0      | 4      | Section signature                                                                                    | ipfa              |
-| 4      | 4      | Section length                                                                                       | 68                |
-| 8      | 4      | ? (always a small number, different for each entry)                                                  |
-| 12     | 8      | ipfa ID                                                                                              |
-| 20     | 8      | Track ID                                                                                             |
+| Offset | Length | Meaning                                                                                                                                                                                                                                       | Examples Value(s) |
+| ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| 0      | 4      | Section signature                                                                                                                                                                                                                             | ipfa              |
+| 4      | 4      | Section length                                                                                                                                                                                                                                | 68                |
+| 8      | 4      | See [Global Counter](#global-counter)                                                                                                                                                                                                         |
+| 12     | 8      | ipfa ID                                                                                                                                                                                                                                       |
+| 20     | 8      | Track ID                                                                                                                                                                                                                                      |
 | ...    |
-| 40     | 2? 4?  | ? (nearly but not always unique, long streaks of values counting up by 1, 2, 3, etc. amid the chaos) | 139, 1111         |
-| 44     | 8      | ipfa ID again (if last track in playlist?)                                                           |
+| 40     | 2? 4?  | ? (nearly but not always unique, long streaks of values counting up by 1, 2, 3, etc. amid the chaos; may refer to [global counter](#global-counter), has been observed with higher values but maybe haven't found the end of the counter yet) | 139, 1111         |
+| 44     | 8      | ipfa ID again (if last track in playlist?)                                                                                                                                                                                                    |
 | ...    |
 
 Grandparents: [lpma](#lpma-playlist)
@@ -1176,6 +1204,8 @@ Length is always 56.
 | 0      | 4      | Subtype (field)                                                                            | see below         |
 | 4      | 4      | Comparison method                                                                          | see below         |
 | 8      | 4?     | ? (only nonzero for [nested smart playlist rules list](#nested-smart-playlist-rules-list)) | 0x 10 00 00 00    |
+| ...    |
+| 44     | 4      | ?                                                                                          | 1 (a?)            |
 | ...    |
 | 52     | 4?     | Associated sections length _starting from offset 56_ (i.e. not including this section)     |
 

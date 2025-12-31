@@ -50,7 +50,7 @@ class SpecialPlaylist(IntEnum):
 class lpma(BinaryObjectParentSection):
     expected_signature = b"lpma"
     subsection_class = bomaPlaylist
-    offsets = {
+    offsets: dict[str, int] = {
         **Section.offsets,
         "total_size": 8,
         "subsection_count": 12,
