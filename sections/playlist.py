@@ -14,6 +14,7 @@ class ipfa(Section):
     expected_signature = b"ipfa"
     offsets = {
         **Section.offsets,
+        "global_counter": 8,
         "id_ipfa": 12,
         "id_track": 20,
         "id_ipfa_2": 44,
@@ -56,6 +57,7 @@ class lpma(BinaryObjectParentSection):
         "subsection_count": 12,
         "tracks_total": 16,
         "date_created": 22,
+        "global_counter": 26,
         "id_playlist": 30,
         "id_parent_folder": 50,
         "special_playlist": 78,
@@ -85,7 +87,7 @@ class lpma(BinaryObjectParentSection):
         "title": 0xc8,  # alias for the previous
         "smart_playlist_rules": 0xc9,
         "smart_playlist_options": 0xca,
-        "plist_generated_artwork_uuids": 0xcd,
+        "plist_cover_artwork_recipe": 0xcd,
         "playlist_item": 0xce,
     }
     data_subtype_aliases = {

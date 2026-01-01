@@ -7,6 +7,7 @@ class String(Section):
     size_start = 16
     offsets = {
         **Section.offsets,
+        "parent_subtype_counter": 8,
         "string": 16,
     }
 

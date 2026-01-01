@@ -21,6 +21,7 @@ class hfma(Section):  # inner hfma only, not outer hfma which is Library
         "musicdb_file_type": 56,
         "song_count": 68, # todo edit these counts if items are added/removed
         "playlist_count": 72,
+        "album_count": 76,
         "artist_count": 80,
         "max_crypt_size": 84,
         "timezone_offset": 88,

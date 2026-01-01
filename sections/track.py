@@ -11,6 +11,7 @@ class TrackNumerics(Section):
     fixed_size = 364
     offsets = {
         # no **Section.offsets: does not have a typical size offset
+        "global_counter": 0,
         "sample_rate": 60,
         "file_folder_count": 72,
         "library_folder_count": 74,
@@ -94,6 +95,7 @@ class itma(BinaryObjectParentSection):
         **Section.offsets,
         "subsection_count": 12,
         "id_track": 16,
+        "global_counter": 24,
         "checkbox_skip_when_shuffling": 30,
         "checkbox_album_is_compilation": 38,
         "checkbox_disabled": 42,

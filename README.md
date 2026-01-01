@@ -133,6 +133,7 @@ Interpreting unknown values:
 - a value with dense bits like 0x cd 3a 45 18 is usually some kind of ID or hash
 - with one exception to the previous: dates are expressed in seconds since 1904-01-01T00:00 (former MacOS epoch), therefore values in the high 3 billions (or higher if you are reading this in the 2030s and beyond) should be suspected as dates
 - try throwing numbers (in decimal) into a web search "site:music.apple.com \<number\>" if you think it might be an Apple Music store ID (although I think I found all of those already)
+- if the value 0 is most common, then 1, then 2, etc. (or beginning at some other value), then this is likely a counter value, but only over a subset of the sections you took the value count over
 
 To determine the size of an unknown section that doesn't have the size in the usual place:
 
@@ -270,7 +271,7 @@ In the last column of the table below, which is unique to this section type:
 | 64     | 4      | ? (not zero but different between inner and outer, might be bit flags)                                                         | 0x 02 01 01 00 (outer) / 0x 02 00 00 00 (inner) | different                |
 | 68     | 4      | Song count                                                                                                                     | 136                                             | no                       |
 | 72     | 4      | Playlist count                                                                                                                 | 15                                              | no                       |
-| 76     | 4      | ?                                                                                                                              | 0x CB 01 00 00                                  | no                       |
+| 76     | 4      | Album count                                                                                                                    | 459                                             | no                       |
 | 80     | 4      | Artist count                                                                                                                   | 24                                              | no                       |
 | 84     | 4      | Max crypt size                                                                                                                 | 102400 (a?)                                     | no                       |
 | 88     | 4      | Library time offset in seconds (i.e. timezone)                                                                                 | -14400 (US/NY) (_signed value_)                 | yes                      |
@@ -338,9 +339,9 @@ Seems completely understood: ✓
 | 12     | 4      | Section subtype            | 3                 |
 | ...    |
 
-Here is a major disagreement with Gary Vollink's table: he, and therefore everyone after him but before me, believed that boma sections broke the usual pattern, and thought boma sections had at offset 4 a mysterious value "always 0x14", while the section length was at offset 8 instead of at 4 as usual. But I believe that boma sections are _not_ the ones that break the pattern. The realization for me came from looking at [smart playlist rules](#slst-smart-playlist-rules-list), which clearly had a section header "SLst" the repeated once for each rule, along with noticing that Gary Vollink came so close to the same realization with boma sections of subtype 0xce, containing [ipfa](#ipfa-playlist-item) subsections — in that case, he labeled offset 4 "subdata start" but still called offset 8 the section length. The problem is that _the children_ of boma sections break the pattern — many do not have a signature, at least not one made of 4 printable ASCII characters, and offset 4 is almost never the section length. This is why I speculate that the "bo" means "object binary"/"binary object", as an indication that the children do not follow the usual section-based format, even though obviously everything is in binary.
+Here is a major disagreement with Gary Vollink's table: he, and therefore everyone after him but before me, believed that boma sections broke the usual pattern, and thought boma sections had at offset 4 a mysterious value "always 0x14", while the section length was at offset 8 instead of at 4 as usual. But I believe that boma sections are _not_ the ones that break the pattern. The realization for me came from looking at [smart playlist rules](#slst-smart-playlist-rules-list), which clearly had a section header "SLst" the repeated once for each rule, along with noticing that Gary Vollink came so close to the same realization with boma sections of subtype 0xce, containing [ipfa](#ipfa-playlist-item) subsections — in that case, he labeled offset 4 "subdata start" but still called offset 8 the section length. The problem is that _the children_ of boma sections break the pattern — many do not have a signature, at least not one made of 4 printable ASCII characters, and offset 4 is almost never the section length. This is why I speculate that the "bo" means "object binary"/"binary object", as an indication that the children usually do not follow the usual section-based format, even though obviously everything is in binary.
 
-For children of boma, this means that all offsets listed on Gary Vollink's page or in jsharkey13's code will be 20 greater than the ones I am listing.
+For children of boma, this means that all offsets listed on Gary Vollink's page or in anyone else's code will be 20 greater than the ones I am listing.
 
 From a practical point of view this doesn't change that much because you will often still need the associated sections length to make sure to read the correct amount of subsection data, and the subtype to know how to interpret it, but at least it explains the "always 0x14", and makes the pattern break less strange in that it is complete, dramatic, and more obviously intentional rather than seemingly very subtle for no good reason.
 
@@ -365,13 +366,24 @@ Children: Depends on subtype. See each of the parents, which list their grandchi
 
 Seems completely understood: X
 
-| Offset | Length   | Meaning                                                                                        | Examples Value(s) |
-| ------ | -------- | ---------------------------------------------------------------------------------------------- | ----------------- |
-| 0      | 4        | Section signature, 1 for UTF-16 and 2 for UTF-8                                                | 1, 2              |
-| 4      | 4        | Section length _starting from offset 16_ (i.e. the string length)                              | 100               |
-| 8      | 4        | ? (observed changing for album artist, composer, album, genre the first time a song is played) |
+| Offset | Length   | Meaning                                                                                                           | Examples Value(s) |
+| ------ | -------- | ----------------------------------------------------------------------------------------------------------------- | ----------------- |
+| 0      | 4        | Section signature, 1 for UTF-16 and 2 for UTF-8 (Would the program accept the other encoding if this is changed?) | 1, 2              |
+| 4      | 4        | Section length _starting from offset 16_ (i.e. the string length)                                                 | 100               |
+| 8      | 4?       | Parent subtype counter (see below)                                                                                |
 | ...    |
-| 16     | variable | The string data in the specified encoding                                                      | any string        |
+| 16     | variable | The string data in the specified encoding                                                                         | any string        |
+
+Offset 8: counts up starting from 0, separately for each parent subtype value. For example, you might have in this order:
+
+- parent with subtype 0x12C, counter 0
+- 0x12C, 1
+- 0x12D, 0
+- 0x12C, 2
+- 0x12C, 3
+- 0x12D, 1
+- 0x12E, 0
+- 0x12D, 2
 
 Parents: [boma](#boma-binary-object), many different subtypes
 
@@ -393,9 +405,9 @@ Parents: [boma](#boma-binary-object), many different subtypes
 
 [Back to TOC](#table-of-contents)
 
-I have discovered that there is a counter running through many of the section types below. It increments by 1 in the order the sections appear in the file.
+I have discovered that there is a counter running through many of the section types below, so I am calling it the "global counter". It increments by 1 in the order the sections appear in the file.
 
-- (I do not believe I have discovered where the counter starts presumably at 0 or 1, because the following began at 96 in a small library, and at 1002 in a larger one, suggesting a correlation with how many of something else is present in the library)
+- (I do not believe I have discovered where the counter starts presumably at 0 or 1, because the following began at 96 in a small library, and at 1002 in a larger one, suggesting a correlation with how many of something else is present in the library; it does not seem like it begins in [iama](#iama-album) or [iAma](#iama-artist) even though those seem the obvious place as neither have any offsets showing counter behavior)
 - [itma](#itma-track) offset 24
 - [track numerics](#track-numerics) offset 0
 - [lpma](#lpma-playlist) offset 26
@@ -681,7 +693,7 @@ Seems completely understood: X
 | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
 | 0       | 4       | Section signature                                                                                                                                                                                                                          | itma                                     |
 | 4       | 4       | Section length                                                                                                                                                                                                                             | 376                                      |
-| 8       | 2? 4?   | ? (usually in range 1000-3000, observed changing when equalizer is set but doesn't matter which equalizer, for other reasons as well)                                                                                                      | 0x F3 0C 00 00                           |
+| 8       | 2? 4?   | ? (usually in range 1000-3000, observed changing when equalizer is set but doesn't matter which equalizer, for other reasons as well, often shared between a few tracks in the same album but also between many unrelated ones)            | 0x F3 0C 00 00                           |
 | 12      | 4       | Number of subsections                                                                                                                                                                                                                      | 18                                       |
 | 16      | 8       | Track ID                                                                                                                                                                                                                                   | 0xD5F6F65777A704BC                       |
 | 24      | 4       | See [Global Counter](#global-counter)                                                                                                                                                                                                      |
@@ -837,76 +849,82 @@ Seems completely understood: X
 
 The length is always 364 bytes (the boma parent always has associated sections length 384).
 
-I discovered that there can be 2 of the [track numerics](#track-numerics) section under the same [itma](#itma-track) after a purchased song is downloaded. However, _I think this is a bug_, because it seems to prepend an entire new one along with a bunch of other data, leaving the second (original) one nearly unchanged in the process (the global counter is still incremented through the extras for one thing). I assume the extra ones then go undetected and unused, because Apple Music made no complaints after I removed them myself. Most conclusively, I decided to push the limits the other way by adding 100 duplicates of the subsection, then I changed some known data in the Apple Music GUI (specifically I changed offset 84 by adding more artworks), and only the first one got changed.
+| Offset | Length  | Meaning                                                                                                                                                                             | Examples Value(s)                                                                    |
+| ------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 0      | 4       | See [Global Counter](#global-counter)                                                                                                                                               |
+| 4      | 4?      | ? (repeat of download flag from [itma](#itma-track) offset 57?)                                                                                                                     |
+| 8      | 8       | ? (an ID? doesn't appear elsewhere)                                                                                                                                                 |
+| 16     | 4?      | ?                                                                                                                                                                                   | 1 (a?)                                                                               |
+| 20     | 4?      | ? (0x 00 01 01 00, sometimes 0, a pair of bit flags? observed changing from 0 to 1 on first song play/skip)                                                                         |
+| 24     | 4?      | ? (half the time 0, half the time 0x 00 00 00 01)                                                                                                                                   |
+| ...    |
+| 33     | 1?      | ? (another bit flag? very rarely 1)                                                                                                                                                 |
+| ...    |
+| 36     | 1?      | ? (another bit flag? very rarely 1)                                                                                                                                                 |
+| ...    |
+| 40     | 1?      | ? (another bit flag? very rarely 0)                                                                                                                                                 |
+| ...    |
+| 45-47  | 1 each? | ? (more bit flags? sometimes 1)                                                                                                                                                     |
+| 48     | 4?      | ?                                                                                                                                                                                   | 0x 00 03 01 00, 0x 02 00 00 00, 0x 00 03 00 00                                       |
+| 52     | 4?      | ?                                                                                                                                                                                   | 0x 00 00 02 03                                                                       |
+| ...    |
+| 60     | 4       | Sample rate in Hz (float32)                                                                                                                                                         | 44100.0 (0x 00 44 2C 47)                                                             |
+| 64     | 4       | ?                                                                                                                                                                                   | 0x 20 33 50 4D, 0x 20 41 34 4D                                                       |
+| 68     | 4       | File type (not sure what this means)                                                                                                                                                | 0                                                                                    |
+| 72     | 2       | File folder count (not sure what this means)                                                                                                                                        | 0, 5                                                                                 |
+| 74     | 2       | Library folder count (not sure what this means)                                                                                                                                     | 0, 1                                                                                 |
+| 76     | 2       | Number of artworks (you can attach more than one)                                                                                                                                   |
+| 78     | 2       | ?                                                                                                                                                                                   | 51                                                                                   |
+| 80     | 2?      | ? (might be signed, 0x ff ff is a common value along with 0)                                                                                                                        |
+| 82     | 2?      | ?                                                                                                                                                                                   | 0, 1, 2                                                                              |
+| 84     | 4       | Total size of all attached artworks (bytes)                                                                                                                                         | 234                                                                                  |
+| 88     | 4       | Bit rate                                                                                                                                                                            |
+| 92     | 4       | Date added                                                                                                                                                                          |
+| ...    |
+| 100    | 4       | ? (a bit flag? 0 or 1)                                                                                                                                                              |
+| ...    |
+| 108    | 4?      | ? (observed changing on first song play/skip)                                                                                                                                       | 0x 10 02 00 00 00, 0x 40 02 00 00 00, 0x 40 08 00 00, 0x A1 02 00 00, 0 (rare value) |
+| 112    | 4?      | ? (observed changing on first song play/skip, values generally 500-3000 range, not unique)                                                                                          |
+| ...    |
+| 120    | 4?      | ? (observed changing on first song play/skip)                                                                                                                                       | 0, 1, 0x 03 00 00 02                                                                 |
+| 124    | 4       | ? (custom lyrics tiny hash? 0 if no custom lyrics, otherwise, always the same value for the same custom lyrics, lyrics [only stored in audio file](#data-stored-in-the-audio-file)) |
+| 128    | 4       | Date modified                                                                                                                                                                       |
+| 132    | 4       | Normalization                                                                                                                                                                       |
+| 136    | 4       | Purchase date                                                                                                                                                                       |
+| 140    | 4       | Release date                                                                                                                                                                        |
+| 144    | 4       | ?                                                                                                                                                                                   | 0, 2                                                                                 |
+| 148    | 4       | ?                                                                                                                                                                                   | 0, 0x 61 34 70 6D                                                                    |
+| 152    | 4       | ? (mostly 0, many values in the low 100s)                                                                                                                                           | 0, 0x 23 01 00 00                                                                    |
+| 156    | 4       | Song duration in milliseconds                                                                                                                                                       |
+| 160    | 4       | Album ID in Apple Music store (see [iama](#iama-album) offset 104)                                                                                                                  |
+| ...    |
+| 168    | 4       | Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                                 |
+| ...    |
+| 184    | 4       | ? (mostly 0, rarely 2)                                                                                                                                                              |
+| ...    |
+| 200    | 4       | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                     |
+| ...    |
+| 208    | 4       | _Album_ Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                         |
+| ...    |
+| 256    | 4?      | ? (observed changing on first song play/skip, not unique)                                                                                                                           | 0, 0x AC A4 AE 00                                                                    |
+| ...    |
+| 264    | 4?      | ? (almost always 0, sometimes 16, 29, other values \< 100)                                                                                                                          |
+| ...    |
+| 272    | 4       | ? (an ID?)                                                                                                                                                                          |
+| ...    |
+| 280    | 4       | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                     |
+| ...    |
+| 288    | 8?      | ?                                                                                                                                                                                   | 0, 0x 37 F8 94 37 4B F4 01 00                                                        |
+| 296    | 4       | File size                                                                                                                                                                           |
+| ...    |
+| 304    | 4       | Song ID in Apple Music store - plug into the end of the URL "https://music.apple.com/song/..." as decimal - 0 if a custom album                                                     |
+| ...    |
+| 328    | 8       | ? (see [itma](#itma-track) offset 220)                                                                                                                                              |
+| ...    |
+| 356    | 4       | ? (a date)                                                                                                                                                                          |
+| ...    |
 
-| Offset | Length | Meaning                                                                                                                                                                           | Examples Value(s)                                          |
-| ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| 0      | 4      | See [Global Counter](#global-counter)                                                                                                                                             |
-| ...    |
-| 4      | 4?     | ? (also the download flag from [itma](#itma-track) offset 57?)                                                                                                                    |
-| 8      | 8      | ? (an ID? doesn't appear elsewhere)                                                                                                                                               |
-| 16     | 4?     | ?                                                                                                                                                                                 | 1                                                          |
-| 20     | 4?     | ?                                                                                                                                                                                 | 0x 00 01 01 00                                             |
-| 21     | 1?     | ? (a bit flag? observed changing from 0 to 1 on first song play/skip)                                                                                                             |
-| 22     | 1?     | ? (a bit flag? observed changing from 0 to 1 on first song play/skip)                                                                                                             |
-| ...    |
-| 44     | 4?     | ?                                                                                                                                                                                 | 0x 00 01 00 01                                             |
-| 48     | 4?     | ?                                                                                                                                                                                 | 0x 00 03 01 00                                             |
-| 52     | 4?     | ?                                                                                                                                                                                 | 0x 00 00 02 03                                             |
-| ...    |
-| 60     | 4      | Sample rate in Hz (float32)                                                                                                                                                       | 44100.0 (0x 00 44 2C 47)                                   |
-| 64     | 4      | ?                                                                                                                                                                                 | 0x 20 33 50 4D, 0x 20 41 34 4D                             |
-| 68     | 4      | File type (not sure what this means)                                                                                                                                              | 0                                                          |
-| 72     | 2      | File folder count (not sure what this means)                                                                                                                                      | 0, 5                                                       |
-| 74     | 2      | Library folder count (not sure what this means)                                                                                                                                   | 0, 1                                                       |
-| 76     | 2      | Number of artworks (you can attach more than one)                                                                                                                                 |
-| 78     | 2      | ?                                                                                                                                                                                 | 51                                                         |
-| 80     | 2?     | ?                                                                                                                                                                                 | 0x 01 00 in a song not downloaded, 0x FF FF in one that is |
-| 82     | 2?     | ?                                                                                                                                                                                 | 0, 2                                                       |
-| 84     | 4      | Total size of all attached artworks (bytes)                                                                                                                                       | 234                                                        |
-| 88     | 4      | Bit rate                                                                                                                                                                          |
-| 92     | 4      | Date added                                                                                                                                                                        |
-| ...    |
-| 100    | 4      | ?                                                                                                                                                                                 | 0, 1                                                       |
-| ...    |
-| 108    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     | 0, 0x 40 08 00 00                                          |
-| 112    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     | 0, 0x 14 03 00 00                                          |
-| ...    |
-| 120    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     | 0, 1                                                       |
-| 124    | 4      | Custom lyrics tiny hash? (0 if no custom lyrics, otherwise, always the same value for the same custom lyrics, lyrics [only stored in audio file](#data-stored-in-the-audio-file)) |
-| 128    | 4      | Date modified                                                                                                                                                                     |
-| 132    | 4      | Normalization                                                                                                                                                                     |
-| 136    | 4      | Purchase date                                                                                                                                                                     |
-| 140    | 4      | Release date                                                                                                                                                                      |
-| 144    | 4      | ?                                                                                                                                                                                 | 0, 2                                                       |
-| 148    | 4      | ?                                                                                                                                                                                 | 0, 0x 61 34 70 6D                                          |
-| 152    | 4      | ?                                                                                                                                                                                 | 0, 0x 23 01 00 00                                          |
-| 156    | 4      | Song duration in milliseconds                                                                                                                                                     |
-| 160    | 4      | Album ID in Apple Music store (see [iama](#iama-album) offset 104)                                                                                                                |
-| ...    |
-| 168    | 4      | Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                               |
-| ...    |
-| 184    | 4      | ?                                                                                                                                                                                 | 2                                                          |
-| ...    |
-| 200    | 4      | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                   |
-| ...    |
-| 208    | 4      | _Album_ Artist ID in Apple Music store (see [iAma](#iama-artist) offset 52)                                                                                                       |
-| ...    |
-| 256    | 4?     | ? (observed changing on first song play/skip)                                                                                                                                     | 0, 0x AC A4 AE 00                                          |
-| ...    |
-| 264    | 4?     | ?                                                                                                                                                                                 | 16                                                         |
-| ...    |
-| 280    | 4      | ? (see [plma](#plma-library-master) offset 104)                                                                                                                                   |
-| ...    |
-| 288    | 8?     | ?                                                                                                                                                                                 | 0, 0x 37 F8 94 37 4B F4 01 00                              |
-| 296    | 4      | File size                                                                                                                                                                         |
-| ...    |
-| 304    | 4      | Song ID in Apple Music store - plug into the end of the URL "https://music.apple.com/song/..." as decimal - 0 if a custom album                                                   |
-| ...    |
-| 328    | 8      | ? (see [itma](#itma-track) offset 220)                                                                                                                                            |
-| ...    |
-| 356    | 4      | ? (a date)                                                                                                                                                                        |
-| ...    |
+I discovered that there can be 2 of the [track numerics](#track-numerics) section under the same [itma](#itma-track) after a purchased song is downloaded. However, _I think this is a bug_, because it seems to prepend an entire new one along with a bunch of other data, leaving the second (original) one nearly unchanged in the process (the [global counter](#global-counter) is still incremented through the extras, presumably because whatever code is maintaining this is not operating under the uniqueness assumption). I assume the extra ones then go undetected and unused, because Apple Music made no complaints after I removed them myself. Most conclusively, I decided to push the limits the other way by adding 100 duplicates of the subsection, then I changed some known data in the Apple Music GUI (specifically I changed offset 84 by adding more artworks), and only the first one got changed.
 
 Grandparents: [itma](#itma-track)
 
@@ -1067,7 +1085,7 @@ Grandchildren:
 - [Strings](#string-section):
   - 0xC8 = playlist name
 - [Raw Strings](#raw-string)
-  - 0xCD = "cover artwork recipe" plist (XML) (describes how the artwork for a playlist was automatically generated from its name — only regular playlists, not smart or folders)
+  - 0xCD = "cover artwork recipe" plist (XML) (describes how the artwork for a playlist was automatically generated (either from its name on a preset picture, or as a collage of 4 artworks from tracks))
 
 # ipfa (Playlist Item)
 
@@ -1081,16 +1099,16 @@ One [lpma](#lpma-playlist) can have many ipfa grandchilldren. This is the only (
 
 Another way this kind of section is unique is that the order they are saved in actually matters: it determines the playlist order of the songs.
 
-| Offset | Length | Meaning                                                                                                                                                                                                                                       | Examples Value(s) |
-| ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| 0      | 4      | Section signature                                                                                                                                                                                                                             | ipfa              |
-| 4      | 4      | Section length                                                                                                                                                                                                                                | 68                |
-| 8      | 4      | See [Global Counter](#global-counter)                                                                                                                                                                                                         |
-| 12     | 8      | ipfa ID                                                                                                                                                                                                                                       |
-| 20     | 8      | Track ID                                                                                                                                                                                                                                      |
+| Offset | Length | Meaning                                                                                                                                                                                                                                                         | Examples Value(s) |
+| ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| 0      | 4      | Section signature                                                                                                                                                                                                                                               | ipfa              |
+| 4      | 4      | Section length                                                                                                                                                                                                                                                  | 68                |
+| 8      | 4      | See [Global Counter](#global-counter)                                                                                                                                                                                                                           |
+| 12     | 8      | ipfa ID                                                                                                                                                                                                                                                         |
+| 20     | 8      | Track ID                                                                                                                                                                                                                                                        |
 | ...    |
-| 40     | 2? 4?  | ? (nearly but not always unique, long streaks of values counting up by 1, 2, 3, etc. amid the chaos; may refer to [global counter](#global-counter), has been observed with higher values but maybe haven't found the end of the counter yet) | 139, 1111         |
-| 44     | 8      | ipfa ID again (if last track in playlist?)                                                                                                                                                                                                    |
+| 40     | 2? 4?  | ? (nearly but not always unique, long streaks of values counting up by 1, 2, 3, etc. amid the chaos; may refer to [global counter](#global-counter), has been observed with higher values but only slightly and maybe haven't found the end of the counter yet) | 139, 1111         |
+| 44     | 8      | ipfa ID again (if last track in playlist?)                                                                                                                                                                                                                      |
 | ...    |
 
 Grandparents: [lpma](#lpma-playlist)
@@ -1207,7 +1225,7 @@ Length is always 56.
 | 4      | 4      | Comparison method                                                                          | see below         |
 | 8      | 4?     | ? (only nonzero for [nested smart playlist rules list](#nested-smart-playlist-rules-list)) | 0x 10 00 00 00    |
 | ...    |
-| 44     | 4      | ?                                                                                          | 1 (a?)            |
+| 44     | 4      | ? (1 sometimes?)                                                                           |
 | ...    |
 | 52     | 4?     | Associated sections length _starting from offset 56_ (i.e. not including this section)     |
 
