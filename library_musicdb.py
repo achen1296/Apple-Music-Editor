@@ -101,35 +101,12 @@ def save_library_bytes(
             f.write(rest_of_compressed)
 
 
-class Library(Section):
-    expected_signature = b"hfma"
-    # subclass of Section -- representing the entire library as the (outer) hfma header with everything else as subsections
-    # this class does not maintain what would otherwise be its "total_size" (the length of the entire file) because that also depends on the encryption/compression process, so that's handled in `save_library_bytes`
-    # however, I do make sure the modified date is set
-    offsets = {
-        **Section.offsets,
-        "file_format_major_version": 12,
-        "file_format_minor_version": 14,
-        # "apple_music_version": 16, # this is a string which would currently break the code expecting ints only other than in boma
-        "id_library": 48,
-        "musicdb_file_type": 56,
-        "song_count": 68,
-        "playlist_count": 72,
-        "album_count": 76,
-        "artist_count": 80,
-        # "max_crypt_size": 84, # handled in load/save_library_bytes
-        "library_time_offset": 88,
-        "date_modified": 100,
-        "id_itunes_library": 108,
-    }
-    offset_int_sizes = defaultdict(lambda: 4, {
-        **Section.offset_int_sizes,
-        "file_format_major_version": 2,
-        "file_format_minor_version": 2,
-        "id_library": 8,
-        "id_itunes_library": 8,
-    })
-    check_signature = False  # hfma signature is registered for the inner one
+class Library(hfma):
+    """ Represents the entire library as the (outer) hfma header with everything else as subsections.
+
+    Subclass of `hfma` to get its class attributes, `__init__` already overrides the behavior to get subsections so no need to add/override the related attributes.
+
+    This class does not maintain what would otherwise be its "total_size" (the length of the entire file) because that also depends on the encryption/compression process, so that's handled in `save_library_bytes`. """
 
     @override
     def __init__(self, library: bytes | bytearray | Path | str = DEFAULT_LIBRARY_FILE):
@@ -144,7 +121,6 @@ class Library(Section):
             self.subsections.append(
                 hsma(data)
             )
-
         assert data.tell() == len(library)
 
     def save(self, *args, **kwargs):
