@@ -119,7 +119,7 @@ Methods in order from best to worst IMO:
   - see "Interpreting unknown values" below
   - see how different items containing certain values are related (e.g. same name, same album, same playlist...)
   - search in the GUI for appearances of a value on items that have it (e.g. pick out some tracks that have a certain value, find their name, and look at their properties in the GUI to find that value) — works well for dates and counts, but would be hard to figure out enums this way
-- change values in the binary arbitrarily and launch Apple Music to see if there is any effect
+- change values in the binary arbitrarily and launch the official program to see if there is any effect
   - I have not tried this method because I imagine it would be very unfruitful
   - I assume you will just cause the library to be detected as corrupt most of the time by doing this
   - if not, it will be difficult to figure out what, if anything has changed
@@ -196,17 +196,17 @@ Dates are almost always stored using the local time on the computer. [hfma](#hfm
 
 [Back to TOC](#table-of-contents)
 
-To get what I refer to as the "raw" library bytes from the file as saved on disk by Apple Music:
+To get what I refer to as the "raw" library bytes from the file as saved on disk by the official program:
 
 - The outer [hfma](#hfma-file-header) section is saved plain and contains the required metadata.
 - The crypt size is:
   - The file size if file size \< max crypt size in hfma
   - Otherwise file size - outer hfma length - ((file size - outer hfma length) % 16)
-  - The max crypt size always seems to be 102400, I was not able to find any other values accepted by the Apple Music program (not that there's any reason to use a different one, so I didn't search that hard)
+  - The max crypt size always seems to be 102400, I was not able to find any other values accepted by the official program (not that there's any reason to use a different one, so I didn't search that hard)
 - Starting after the outer hfma, decrypt \<crypt size\> bytes using AES128-ECB and the encryption key (see code)
 - Concatenate the remaining bytes in the file after the encrypted portion onto the decrypted bytes
 - Decompress the result with zlib
-  - Experimentally, Apple Music uses compression level 1 (best speed), but it also seems to accept any compression level (not that there's any particular reason to use another compression level when Apple Music will resave the library itself the next time you open it)
+  - Experimentally, the official program uses compression level 1 (best speed), but it also seems to accept any compression level (not that there's any particular reason to use another compression level when the official program will resave the library itself the next time you open it)
 - Concatenate the decompressed result onto the outer hfma header
 
 The remainder of this document describes the raw library bytes.
@@ -345,7 +345,7 @@ For children of boma, this means that all offsets listed on Gary Vollink's page 
 
 From a practical point of view this doesn't change that much because you will often still need the associated sections length to make sure to read the correct amount of subsection data, and the subtype to know how to interpret it, but at least it explains the "always 0x14", and makes the pattern break less strange in that it is complete, dramatic, and more obviously intentional rather than seemingly very subtle for no good reason.
 
-In almost all cases, a boma section's subtype should not be shared by any of its siblings ([one known exception](#ipfa-playlist-item)). If there are somehow 2 or more (due to external tampering or [a bug](#track-numerics)), only the first one gets used by Apple Music, and it may or may not discard the others.
+In almost all cases, a boma section's subtype should not be shared by any of its siblings ([one known exception](#ipfa-playlist-item)). If there are somehow 2 or more (due to external tampering or [a bug](#track-numerics)), only the first one gets used by the official program, and it may or may not discard the others.
 
 Parents:
 
@@ -924,7 +924,7 @@ The length is always 364 bytes (the boma parent always has associated sections l
 | 356    | 4       | ? (a date)                                                                                                                                                                          |
 | ...    |
 
-I discovered that there can be 2 of the [track numerics](#track-numerics) section under the same [itma](#itma-track) after a purchased song is downloaded. However, _I think this is a bug_, because it seems to prepend an entire new one along with a bunch of other data, leaving the second (original) one nearly unchanged in the process (the [global counter](#global-counter) is still incremented through the extras, presumably because whatever code is maintaining this is not operating under the uniqueness assumption). I assume the extra ones then go undetected and unused, because Apple Music made no complaints after I removed them myself. Most conclusively, I decided to push the limits the other way by adding 100 duplicates of the subsection, then I changed some known data in the Apple Music GUI (specifically I changed offset 84 by adding more artworks), and only the first one got changed.
+I discovered that there can be 2 of the [track numerics](#track-numerics) section under the same [itma](#itma-track) after a purchased song is downloaded. However, _I think this is a bug_, because it seems to prepend an entire new one along with a bunch of other data, leaving the second (original) one nearly unchanged in the process (the [global counter](#global-counter) is still incremented through the extras, presumably because whatever code is maintaining this is not operating under the uniqueness assumption). I assume the extra ones then go undetected and unused, because the official program made no complaints after I removed them myself. Most conclusively, I decided to push the limits the other way by adding 100 duplicates of the subsection, then I changed some known data in the official program (specifically I changed offset 84 by adding more artworks), and only the first one got changed.
 
 Grandparents: [itma](#itma-track)
 
@@ -1343,13 +1343,13 @@ Offset 4:
 
 Child: Smart Playlist Rule Arguments
 
-The Apple Music GUI only allows selecting with a precision of 1 day. (It also seems to handle time zones poorly — the date you select may have shifted by 1 when you open the rules again.)
+The official program only allows selecting with a precision of 1 day. (It also seems to handle time zones poorly — the date you select may have shifted by 1 when you open the rules again.)
 
 - For "is" and "is not":
   - argument 0: midnight of the date chosen, e.g. 0x 00 00 00 00 E5 76 23 80 = 2025-12-28T00:00:00
   - argument 3: 23:59:59 of the same date, e.g. 0x 00 00 00 00 E5 77 74 FF = 2025-12-28T23:59:59
   - this suggests it is actually using numeric "is in the range" and "is not in the range" internally (is "is not in the range" a valid value for other numerics even though it's not presented in the GUI?)
-  - would the Apple Music program accept more precise bounds edited in?
+  - would the official program accept more precise bounds edited in?
 - For "is after":
   - argument 0 and argument 3 both set to 23:59:59 of the date chosen
   - seems to be using "is greater than"
@@ -1372,7 +1372,7 @@ The Apple Music GUI only allows selecting with a precision of 1 day. (It also se
 - For "is in the range":
   - argument 0: midnight of the first date chosen
   - argument 3: 23:59:59 of the second date chosen
-  - if you select the same date for both bounds, close the rules list, and reopen it, the Apple Music GUI will show it as an "is" rule, proving that there is literally no difference!
+  - if you select the same date for both bounds, close the rules list, and reopen it, the official program GUI will show it as an "is" rule, proving that there is literally no difference!
 
 ## Enums
 
@@ -1594,7 +1594,7 @@ The folder "preferences" contains .plist files which seem to be the options for:
 
 [Back to TOC](#table-of-contents)
 
-Apple Music understands [ID3 tags](https://id3.org/id3v2.3.0). Some data is stored only in the audio file:
+The official program understands [ID3 tags](https://id3.org/id3v2.3.0). Some data is stored only in the audio file:
 
 - ID3 version
 - lyrics
