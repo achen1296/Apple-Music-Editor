@@ -1,10 +1,9 @@
 import os
 import zlib
-from collections import defaultdict
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import override
+from typing import Type, override
 
 from Crypto.Cipher import AES
 
@@ -125,6 +124,36 @@ class Library(hfma):
 
     def save(self, *args, **kwargs):
         save_library_bytes(b''.join(s.data for s in self), *args, **kwargs)
+
+    def _grandchild_of_type[T: Section](self, type: Type[T]) -> T:
+        for h in self.subsections:
+            if isinstance(h.child, type):
+                return h.child
+        raise KeyError
+
+    @property
+    def inner_file_header(self):
+        return self._grandchild_of_type(hfma)
+
+    @property
+    def library_master(self):
+        return self._grandchild_of_type(plma)
+
+    @property
+    def albums(self):
+        return self._grandchild_of_type(lama)
+
+    @property
+    def artists(self):
+        return self._grandchild_of_type(lAma)
+
+    @property
+    def tracks(self):
+        return self._grandchild_of_type(ltma)
+
+    @property
+    def playlists(self):
+        return self._grandchild_of_type(lPma)
 
 
 if __name__ == "__main__":
