@@ -25,7 +25,7 @@ class String(Section):
         return self._data[self.offsets["string"]:].decode(self.encoding)
 
     def set_string(self, value: str):
-        self._edit_change_size()
+        self._edit()
         self._data[self.offsets["string"]:] = value.encode(self.encoding)
         self.set_int("string_size", self.size - self.offsets["string"])
 
@@ -44,7 +44,7 @@ class RawString(Section):
         return self._data.decode(self.encoding)
 
     def set_string(self, value: str):
-        self._edit_change_size()
+        self._edit()
         self._data = value.encode(self.encoding)
 
 

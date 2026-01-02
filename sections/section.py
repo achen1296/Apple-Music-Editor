@@ -52,9 +52,6 @@ class Section:
         (If a section type has neither a size offset nor a fixed size, but it does have some other way to determine its size from its own data, then the subclass should just extend `__init__`.) """
 
         self._edited = False
-        self._changed_size = False
-        self._updated_size_after_change = True
-        self._subsection_count_changed = False
 
         start_offset = data.tell()
 
@@ -73,6 +70,8 @@ class Section:
                 raise ValueError("size hint not provided when needed")
             self._data = bytearray(data.read(size_hint))
             assert self.size == size_hint  # make sure read() did not stop short
+
+        self._size_in_data = self.size
 
         if "signature" in self.offsets:
             self.signature = self._data[self.offsets["signature"]:self.offsets["signature"] + 4]
@@ -128,14 +127,11 @@ class Section:
         for s in self.subsections:
             s.parent = self
 
+        self._subsection_count_in_data = self.subsection_count
+        self._total_size_in_data = self.total_size
+
     @property
     def size(self):
-        if "size" in self.offsets:
-            if not self._updated_size_after_change and self._changed_size:
-                self.set_int("size", len(self._data) - self.size_start)
-                # do not change back to self._changed_size = False because supersections might not have seen tha the size changed yet!
-                # better to update the size multiple times redundantly than not to set it at all
-                self._updated_size_after_change = True
         return len(self._data)
 
     @property
@@ -145,34 +141,22 @@ class Section:
 
     @property
     def total_size(self):
-        """ Size of this section and all subsections, referred to as "associated sections length" on vollink """
-        if "total_size" in self.offsets and any(s._changed_size or s._subsection_count_changed for s in self):
-            total_size = sum(s.size for s in self)
-            self.set_int("total_size", total_size - self.total_size_start)
-            return total_size
-        else:
-            return sum(s.size for s in self)
+        """ Size of this section and all subsections, referred to as "associated sections length" on Vollink's site """
+        return sum(s.size for s in self)
 
     @property
     def total_size_from_data(self):
         """ Use this one when loading! `total_size` will not be correct until this section and all subsections are loaded! """
-        if "total_size" not in self.offsets:
-            raise ValueError(f"{self.__class__.__name__} section doesn't have a stored total size")
         return self.get_int("total_size")
 
     @property
     def subsection_count(self):
-        """ Referred to as "how many sections follow" on vollink """
-        if "subsection_count" in self.offsets and self._subsection_count_changed:
-            self.set_int("subsection_count", len(self.subsections))
-            self._subsection_count_changed = False
+        """ Referred to as "how many sections follow" on Vollink's site """
         return len(self.subsections)
 
     @property
     def subsection_count_from_data(self):
         """ Use this one when loading! `subsection_count` will not be correct until this section and all subsections are loaded! """
-        if "subsection_count" not in self.offsets:
-            raise ValueError(f"{self.__class__.__name__} section doesn't have a stored subsection count")
         return self.get_int("subsection_count")
 
     @property
@@ -193,27 +177,23 @@ class Section:
     def _edit(self):
         self._edited = True
 
-    def _edit_change_size(self):
-        self._edited = True
-        self._changed_size = True
-        self._updated_size_after_change = False
-
-    def _edit_change_subsection_count(self):
-        self._edited = True
-        self._subsection_count_changed = True
-
     @property
     def data(self):
-        # this makes sure everything is updated when we go to write
+        """ Make sure everything is updated when we go to write """
 
         if "date_modified" in self.offsets and any(s._edited for s in self):
             self.set_int("date_modified", datetime_to_int())
             # do not change back to self._edited = False because supersections might not have seen yet
 
-        # run the logic to update these in their property methods
-        self.size
-        self.total_size
-        self.subsection_count
+        if self.size != self._size_in_data:
+            self.set_int("size", self.size - self.size_start)
+            self._size_in_data = self.size
+        if self.total_size != self._total_size_in_data:
+            self.set_int("total_size", self.total_size - self.total_size_start)
+            self._total_size_in_data = self.total_size
+        if self.subsection_count != self._subsection_count_in_data:
+            self.set_int("subsection_count", self.subsection_count)
+            self._subsection_count_in_data = self.subsection_count
 
         return self._data
 
