@@ -25,7 +25,11 @@ _Note that this code does not support the book subtype of boma sections, because
 
 _In general, I just know it works on my own library file with the types of edits I wanted to do, so I can't give any guarantees about what it does to your library file. For this reason I've made it automatically make backups when you use the program to edit your library, unless you specifically turn them off. They will be called e.g. "Library backup 2026-01-01T00.00.00.musicdb" (if you saved the edited version on midnight of January 1, 2026) and placed in the same folder as Library.musicdb._
 
-So far I have successfully edited simple things like the play count of a track, which does not affect any references. However, I have also made many more discoveries on top of those of the previous people credited above, which makes me hopeful about more complicated edits. Maybe even full understanding of the file! Below, I have combined all known information into what I believe is the most complete public Library.musicdb format description! Eventually I will send this to Gary Vollink, so if his site includes all of the new information, it came from me.
+So far I have:
+- edited simple things like the play count of a track, which does not affect any references
+- created a playlist from scratch
+
+I have also made many more discoveries on top of those of the previous people credited above, which makes me hopeful about more complicated edits. Maybe even full understanding of the file! Below, I have combined all known information into what I believe is the most complete public Library.musicdb format description! Eventually I will send this to Gary Vollink, so if his site includes all of the new information, it came from me.
 
 > "If I have seen further, it is by standing on the shoulders of giants."
 
