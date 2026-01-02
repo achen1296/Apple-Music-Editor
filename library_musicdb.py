@@ -154,8 +154,3 @@ class Library(hfma):
     @property
     def playlists(self):
         return self._grandchild_of_type(lPma)
-
-
-if __name__ == "__main__":
-    library = Library()
-    # print(library)
