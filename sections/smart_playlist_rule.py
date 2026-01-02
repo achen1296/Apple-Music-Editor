@@ -295,33 +295,35 @@ class SmartPlaylistRule(BigEndianSection):
     # offset_int_enums = {}
     # to be set depending on the actual values encountered
 
-    def __init__(self, data: BytesIO, *args, **kwargs):
+    @override
+    def __init__(self, data: BytesIO, *args, from_scratch=False, **kwargs):
         super().__init__(data, *args, **kwargs)
 
         # figure out field type and arguments in use
         # cannot just look for the default values to determine arguments in use because some actual values collide with them
 
-        field = self.get_int("subtype")
-        for e in FIELD_INT_ENUMS:
-            try:
-                field = e(field)
-            except ValueError:
-                pass
+        if not from_scratch:
+            field = self.get_int("subtype")
+            for e in FIELD_INT_ENUMS:
+                try:
+                    field = e(field)
+                except ValueError:
+                    pass
 
-        if not isinstance(field, IntEnum):
-            # super().__init__ already set the child to Unknown class
-            return
+            if not isinstance(field, IntEnum):
+                # super().__init__ already set the child to Unknown class
+                return
 
-        self.offset_int_enums = {
-            "field": field.__class__,
-            "comparison_method": COMPARISON_INT_ENUMS[field.__class__],
-        }
+            self.offset_int_enums = {
+                "field": field.__class__,
+                "comparison_method": COMPARISON_INT_ENUMS[field.__class__],
+            }
 
-        if isinstance(field, EnumField):
-            self.offset_int_enums["argument_1"] = self.offset_int_enums["argument_3"] = ENUM_FIELD_ARGUMENT_VALUE_ENUMS[field]
+            if isinstance(field, EnumField):
+                self.offset_int_enums["argument_1"] = self.offset_int_enums["argument_3"] = ENUM_FIELD_ARGUMENT_VALUE_ENUMS[field]
 
-        if isinstance(self.child, SmartPlaylistRuleArguments):
-            self.child.arguments_in_use = ARGUMENTS_USED[field.__class__]
+            if isinstance(self.child, SmartPlaylistRuleArguments):
+                self.child.arguments_in_use = ARGUMENTS_USED[field.__class__]
 
 
 SLst.subsection_class = SmartPlaylistRule

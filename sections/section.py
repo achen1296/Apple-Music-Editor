@@ -46,23 +46,30 @@ class Section:
     offset_aliases: set[str] = set()
     """ Added offset names to this set to prevent repeating the same offset in `as_dict`. """
 
-    def __init__(self, data: BytesIO, size_hint: int | None = None):
+    def __init__(
+        self, data: BytesIO,
+        *,
+        size_hint: int | None = None,
+        from_scratch=False
+    ):
         """ `size_hint` is only needed if there is neither a size offset nor a `fixed_size` class attribute given, and should come from the parent's `self.get_int("total_size") - self.get_int("size")` (this assumes there is only one child section). This is only supposed to be used for certain `boma` children which lack both a size offset and a fixed size, and as a last resort for unknown section types.
 
-        (If a section type has neither a size offset nor a fixed size, but it does have some other way to determine its size from its own data, then the subclass should just extend `__init__`.) """
+        (If a section type has neither a size offset nor a fixed size, but it does have some other way to determine its size from its own data, then the subclass should just extend `__init__`.)
+
+        If `from_scratch` (usually using the classmethod of that name), will just accept `size_hint` bytes from `data` no matter what, and will not try to read subsections -- it is up to the caller to make sure valid data is used and add subsections! Furthermore, instead of checking the expected signature, will just set it automatically as a convenience. (This is also already taken care of for `"date_modified"`, `"size"`, `"total_size"`, and `"subsection_count"` in the `data` property, so they will also be set correctly at write time.) """
 
         self._edited = False
 
         start_offset = data.tell()
 
         # read this section
-        if "size" in self.offsets:
+        if not from_scratch and "size" in self.offsets:
             size_end_pos = self.offsets["size"] + self.offset_int_sizes["size"]
             self._data = bytearray(data.read(size_end_pos))
             read_end_pos = self.size_from_data + self.size_start
             self._data += data.read(read_end_pos - size_end_pos)
             assert self.size == read_end_pos  # make sure read() did not stop short
-        elif self.fixed_size is not None:
+        elif not from_scratch and self.fixed_size is not None:
             self._data = bytearray(data.read(self.fixed_size))
             assert self.size == self.fixed_size  # make sure read() did not stop short
         else:
@@ -71,64 +78,86 @@ class Section:
             self._data = bytearray(data.read(size_hint))
             assert self.size == size_hint  # make sure read() did not stop short
 
-        self._size_in_data = self.size
-
         if "signature" in self.offsets:
-            self.signature = self._data[self.offsets["signature"]:self.offsets["signature"] + 4]
-            if self.expected_signature is not None:
-                assert self.signature == self.expected_signature
+            if not from_scratch:
+                self.signature = self._data[self.offsets["signature"]:self.offsets["signature"] + 4]
+                if self.expected_signature is not None:
+                    assert self.signature == self.expected_signature
+            else:
+                assert self.expected_signature
+                self.signature = self._data[self.offsets["signature"]:self.offsets["signature"] + 4] = self.expected_signature
         else:
             self.signature = b""
 
         # read subsections -- only if there is either a total size or a subsection count in the data (sometimes both are present, doesn't matter which is used in that case for a valid file)
         self.subsections: list["Section"] = []
+        """ If you edit this externally, you are responsible for setting the parent pointers! """
+        self.parent: "Section" = self  # won't be reassigned if this is the root Section
 
-        if "total_size" in self.offsets:
-            size_hint_for_child = self.total_size_from_data + self.total_size_start - self.size
+        if not from_scratch:
+            if "total_size" in self.offsets:
+                size_hint_for_child = self.total_size_from_data + self.total_size_start - self.size
+            else:
+                size_hint_for_child = None
+
+            def append_subsection():
+                nonlocal size_hint_for_child
+
+                if not self.subsection_class:
+                    # don't need to figure out the subsection class until there actually is a subsection -- so leaf subsections may leave both subsection_class and subsection_class_by_subtype as the default values above without issue
+                    try:
+                        self.subsection_class = self.subsection_class or self.subsection_class_by_subtype[self.get_int("subtype")]
+                    except KeyError:
+                        if "subtype" in self.offsets:
+                            message_prefix = f"couldn't figure out what kind of subsection {self.__class__.__name__} subtype {self.get_int("subtype")} should have"
+                        else:
+                            message_prefix = f"couldn't figure out what kind of subsection {self.__class__.__name__} should have"
+
+                        if "total_size" in self.offsets:
+                            print(f"warning: {message_prefix}, but can proceed with `Unknown` fallback type using parent's total size")
+                            self.subsection_class = Unknown
+                        else:
+                            # todo try backing up to ancestors that *do* have a total size
+                            raise ValueError(f"{message_prefix}, and total size is not provided to fall back on")
+
+                self.subsections.append(
+                    self.subsection_class(data, size_hint=size_hint_for_child)
+                )
+
+            if "total_size" in self.offsets:
+                # total size is preferred if both are available because it has a better chance of being able to proceed for unknown sections
+                total_size = self.total_size_from_data + self.total_size_start
+                while data.tell() < start_offset + total_size:
+                    append_subsection()
+                assert data.tell() == start_offset + total_size
+            elif "subsection_count" in self.offsets:
+                for _ in range(0, self.subsection_count_from_data):
+                    append_subsection()
+
+            for s in self.subsections:
+                s.parent = self
+
+        if not from_scratch:
+            self._last_size = self.size
+            self._last_subsection_count = self.subsection_count
+            self._last_total_size = self.total_size
         else:
-            size_hint_for_child = None
+            # these haven't been set in the data yet
+            # -1 will definitely not match any legitimate values inducing the values to be written when self.data property is retrieved
+            self._last_size = -1
+            self._last_subsection_count = -1
+            self._last_total_size = -1
 
-        def append_subsection():
-            nonlocal size_hint_for_child
-
-            if not self.subsection_class:
-                # don't need to figure out the subsection class until there actually is a subsection -- so leaf subsections may leave both subsection_class and subsection_class_by_subtype as the default values above without issue
-                try:
-                    self.subsection_class = self.subsection_class or self.subsection_class_by_subtype[self.get_int("subtype")]
-                except KeyError:
-                    if "subtype" in self.offsets:
-                        message_prefix = f"couldn't figure out what kind of subsection {self.__class__.__name__} subtype {self.get_int("subtype")} should have"
-                    else:
-                        message_prefix = f"couldn't figure out what kind of subsection {self.__class__.__name__} should have"
-
-                    if "total_size" in self.offsets:
-                        print(f"warning: {message_prefix}, but can proceed with `Unknown` fallback type using parent's total size")
-                        self.subsection_class = Unknown
-                    else:
-                        # todo try backing up to ancestors that *do* have a total size
-                        raise ValueError(f"{message_prefix}, and total size is not provided to fall back on")
-
-            self.subsections.append(
-                self.subsection_class(data, size_hint=size_hint_for_child)
-            )
-
-        self.parent = self  # won't be reassigned if this is the root Section
-
-        if "total_size" in self.offsets:
-            # total size is preferred if both are available because it has a better chance of being able to proceed for unknown sections
-            total_size = self.total_size_from_data + self.total_size_start
-            while data.tell() < start_offset + total_size:
-                append_subsection()
-            assert data.tell() == start_offset + total_size
-        elif "subsection_count" in self.offsets:
-            for _ in range(0, self.subsection_count_from_data):
-                append_subsection()
-
-        for s in self.subsections:
-            s.parent = self
-
-        self._subsection_count_in_data = self.subsection_count
-        self._total_size_in_data = self.total_size
+    @classmethod
+    def from_scratch(cls, initial_size: int, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
+        """ See `__init__` and `update`. Any data you don't set in `initial_values` will default to 0, unless another part of this class takes care of it for you. """
+        sec = cls(
+            BytesIO(b"\x00" * initial_size),
+            size_hint=initial_size,
+            from_scratch=True,
+        )
+        sec.update(initial_values)
+        return sec
 
     @property
     def size(self):
@@ -185,15 +214,15 @@ class Section:
             self.set_int("date_modified", datetime_to_int())
             # do not change back to self._edited = False because supersections might not have seen yet
 
-        if "size" in self.offsets and self.size != self._size_in_data:
+        if "size" in self.offsets and self.size != self._last_size:
             self.set_int("size", self.size - self.size_start)
-            self._size_in_data = self.size
-        if "total_size" in self.offsets and self.total_size != self._total_size_in_data:
+            self._last_size = self.size
+        if "total_size" in self.offsets and self.total_size != self._last_total_size:
             self.set_int("total_size", self.total_size - self.total_size_start)
-            self._total_size_in_data = self.total_size
-        if "subsection_count" in self.offsets and self.subsection_count != self._subsection_count_in_data:
+            self._last_total_size = self.total_size
+        if "subsection_count" in self.offsets and self.subsection_count != self._last_subsection_count:
             self.set_int("subsection_count", self.subsection_count)
-            self._subsection_count_in_data = self.subsection_count
+            self._last_subsection_count = self.subsection_count
 
         return self._data
 
@@ -202,6 +231,12 @@ class Section:
         yield self
         for s in self.subsections:
             yield from s
+
+    def add_subsection(self, s: "Section", *, index=None):
+        if index is None:
+            index = self.subsection_count
+        self.subsections.insert(index, s)
+        s.parent = self
 
     def as_dict(self) -> dict:
         """ Summary dict of known data in this section (not any subsections). """
@@ -300,6 +335,31 @@ class Section:
         else:
             offset = key
         return bool(self.get_int((offset, 1)))
+
+    def update(self, d: dict[str | int | tuple[int, int], bytes | int | bool]):
+        """ Update multiple offsets, automatically using the correct method depending on the data type of the values. (Make sure the key type matches the method signatures too!) """
+        for k, v in d.items():
+            if isinstance(v, bytes):
+                if not (isinstance(k, str) or isinstance(k, int)):
+                    raise TypeError(f"key for bytes value {v} must be str or int, not {k}")
+                self.set_bytes(k, v)
+            elif isinstance(v, int):
+                if not (
+                    isinstance(k, str) or (
+                        isinstance(k, tuple)
+                        and len(k) == 2
+                        and isinstance(k[0], int)
+                        and isinstance(k[1], int)
+                    )
+                ):
+                    raise TypeError(f"key for int value {v} must be str or tuple[int, int], not {k}")
+                self.set_int(k, v)
+            elif isinstance(v, bool):
+                if not (isinstance(k, str) or isinstance(k, int)):
+                    raise TypeError(f"key for boolean value {v} must be str or int, not {k}")
+                self.set_boolean(k, v)
+            else:
+                raise TypeError(f"don't know what to with value {v} (key {k})")
 
 
 class Unknown(Section):

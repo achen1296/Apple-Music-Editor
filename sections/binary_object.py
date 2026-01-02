@@ -1,4 +1,5 @@
-from typing import override
+from abc import ABCMeta
+from typing import Literal, override
 
 from .section import Section
 
@@ -11,15 +12,31 @@ class String(Section):
         "string": 16,
     }
 
-    def __init__(self, *args, **kwargs):
+    @override
+    @classmethod
+    def from_scratch(cls, initial_size: int, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}, initial_string: str = "", encoding: Literal["utf_16_le", "utf_8"] = "utf_16_le"):
+        s = super().from_scratch(initial_size, initial_values)
+        s.encoding = encoding
+        if encoding == "utf_16_le":
+            s.set_bytes("signature", b"\x01\x00\x00\x00")
+        elif s.encoding == "utf_8":
+            s.set_bytes("signature", b"\x02\x00\x00\x00")
+        else:
+            raise ValueError
+        s.set_string(initial_string)
+        return s
+
+    @override
+    def __init__(self, *args, from_scratch=False, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if self.signature == b"\x02\x00\x00\x00":
-            self.encoding = "utf_8"
-        elif self.signature == b"\x01\x00\x00\x00":
-            self.encoding = "utf_16_le"
-        else:
-            raise ValueError(f"unexpected signature for a string {self.signature}, don't know what encoding to use")
+        if not from_scratch:
+            if self.signature == b"\x02\x00\x00\x00":
+                self.encoding = "utf_8"
+            elif self.signature == b"\x01\x00\x00\x00":
+                self.encoding = "utf_16_le"
+            else:
+                raise ValueError(f"unexpected signature for a string {self.signature}, don't know what encoding to use")
 
     def get_string(self):
         return self._data[self.offsets["string"]:].decode(self.encoding)
@@ -27,18 +44,22 @@ class String(Section):
     def set_string(self, value: str):
         self._edit()
         self._data[self.offsets["string"]:] = value.encode(self.encoding)
-        self.set_int("string_size", self.size - self.offsets["string"])
+        # size will be taken care of in data property
 
 
-class RawString(Section):
+class RawString(Section, metaclass=ABCMeta):  # abstract because no encoding
     offsets = {
         # no **Section.offsets: does not have a typical size offset
         "string": 0,
     }
     encoding = ""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    @override
+    @classmethod
+    def from_scratch(cls, initial_size: int, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}, initial_string: str = ""):
+        s = super().from_scratch(initial_size, initial_values)
+        s.set_string(initial_string)
+        return s
 
     def get_string(self):
         return self._data.decode(self.encoding)
@@ -52,11 +73,11 @@ class RawStringUTF8(RawString):
     encoding = "utf_8"
 
 
-class RawStringUTF16(RawString):
+class RawStringUTF16LE(RawString):
     encoding = "utf_16_le"
 
 
-RawStringUTF16LE = RawStringUTF16
+RawStringUTF16 = RawStringUTF16LE  # LE is by far more common
 
 
 class RawStringUTF16BE(RawString):
