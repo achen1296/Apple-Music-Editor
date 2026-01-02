@@ -471,7 +471,7 @@ Grandchildren:
 - 0x1F6 = [1F6](#1f6)
 - 0x1FF = [1FF](#1ff)
 - [Strings](#string-section):
-  - boma subtype 0x1F8 = media folder URI ("file://localhost/C:/...")
+  - boma subtype 0x1F8 = media folder URI ("file://localhost/C:/...") (UTF-16)
 - [Raw Strings](#raw-string)
   - 0x1FC = imported iTunes .itl file (UTF-8)
   - 0x1FD = media folder path (UTF-16)
@@ -587,9 +587,9 @@ Children: [boma](#boma-binary-object)
 Grandchildren:
 
 - [Strings](#string-section):
-  - 0x12C = album name
-  - 0x12D = artist name
-  - 0x12E = album artist name
+  - 0x12C = album name (UTF-16)
+  - 0x12D = artist name (UTF-16)
+  - 0x12E = album artist name (UTF-16)
 
 # lAma (Artist List)
 
@@ -655,8 +655,8 @@ Children: [boma](#boma-binary-object)
 Grandchildren:
 
 - [Strings](#string-section):
-  - 0x190 = artist name
-  - 0x191 = artist name sort
+  - 0x190 = artist name (UTF-16)
+  - 0x191 = artist name sort (UTF-16)
 - [Raw Strings](#raw-string)
   - 0x192 = artwork URL plist (XML) (UTF-8)
 
@@ -804,7 +804,7 @@ Grandchildren:
 - 0x1: [track numerics](#track-numerics)
 - 0x17: [track plays and skips](#track-plays-and-skips)
 - 0x24: [video](#video)
-- [Strings](#string-section):
+- [Strings](#string-section) (assume UTF-16 unless specified as UTF-8; not exhaustive since I don't have some of these):
   - 0x2 = title
   - 0x3 = album
   - 0x4 = artist
@@ -812,7 +812,7 @@ Grandchildren:
   - 0x6 = kind - e.g. "MPEG audio file"
   - 0x7 = equalizer - always a UTF-16 string that looks like "#!#\<number\>#!#" where the number is different for each equalizer option, strange that this is not a single-byte enum
   - 0x8 = comments
-  - 0xB = URL - only present for downloaded tracks, URL-encoded version of the file path "file:///C:/Users..."
+  - 0xB = URL - only present for downloaded tracks, URL-encoded version of the file path "file:///C:/Users..." (UTF-8)
   - 0xC = composer
   - 0xE = grouping
   - 0x12 = episode description
@@ -838,8 +838,8 @@ Grandchildren:
   - 0x43 = file path - only present for downloaded tracks
   - 0x12F = series title
 - [Raw Strings](#raw-string)
-  - 0x36 = artwork plist (XML)
-  - 0x38 = redownload parameters plist (XML)
+  - 0x36 = artwork plist (XML) (UTF-8)
+  - 0x38 = redownload parameters plist (XML) (UTF-8)
 
 # Track Numerics
 
@@ -1026,12 +1026,12 @@ Playlist folders are implemented as special playlists, along with the parent fol
 | 22     | 4      | Playlist creation date                                                                                                       | 3818534400         |
 | 26     | 4      | See [Global Counter](#global-counter)                                                                                        |
 | 30     | 8      | Playlist ID                                                                                                                  | 0x883E9012A290710E |
-| 38     | 1? 4?  | ? (always 1)                                                                                                                 | 0x883E9012A290710E |
+| 38     | 1? 4?  | ? (always 1)                                                                                                                 |
 | ...    |
-| 44     | 1? 2?  | ? (always 0 except for the "####!####" playlist, which has 1, might be a flag indicating this special "everything" playlist) | 0x883E9012A290710E |
+| 44     | 1? 2?  | ? (always 0 except for the "####!####" playlist, which has 1, might be a flag indicating this special "everything" playlist) |
 | 46     | 1? 2?  | ? (always 0, except that it's 0x 00 01 on certain smart playlists (including folders))                                       |
 | 48     | 1? 2?  | ? (same as 46 but a bigger set of smart playlists)                                                                           |
-| 50     | 8      | Playlist ID of parent playlist folder (nothing to do with the [lPma](#lpma-playlist-list) section parent)                    | 0x883E9012A290710E |
+| 50     | 8      | Playlist ID of parent playlist folder (nothing to do with the [lPma](#lpma-playlist-list) section parent)                    |
 | ...    |
 | 78     | 2? 4?  | Special playlist ID                                                                                                          | see below          |
 | ...    |
@@ -1083,9 +1083,9 @@ Grandchildren:
 - 0xCA: [Smart Playlist Options](#smart-playlist-options)
 - 0xC9: [SLst (Smart Playlist Rules List)](#slst-smart-playlist-rules-list)
 - [Strings](#string-section):
-  - 0xC8 = playlist name
+  - 0xC8 = playlist name (UTF-16)
 - [Raw Strings](#raw-string)
-  - 0xCD = "cover artwork recipe" plist (XML) (describes how the artwork for a playlist was automatically generated (either from its name on a preset picture, or as a collage of 4 artworks from tracks))
+  - 0xCD = "cover artwork recipe" plist (XML) (UTF-8) (describes how the artwork for a playlist was automatically generated (either from its name on a preset picture, or as a collage of 4 artworks from tracks))
 
 # ipfa (Playlist Item)
 
