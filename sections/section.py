@@ -185,13 +185,13 @@ class Section:
             self.set_int("date_modified", datetime_to_int())
             # do not change back to self._edited = False because supersections might not have seen yet
 
-        if self.size != self._size_in_data:
+        if "size" in self.offsets and self.size != self._size_in_data:
             self.set_int("size", self.size - self.size_start)
             self._size_in_data = self.size
-        if self.total_size != self._total_size_in_data:
+        if "total_size" in self.offsets and self.total_size != self._total_size_in_data:
             self.set_int("total_size", self.total_size - self.total_size_start)
             self._total_size_in_data = self.total_size
-        if self.subsection_count != self._subsection_count_in_data:
+        if "subsection_count" in self.offsets and self.subsection_count != self._subsection_count_in_data:
             self.set_int("subsection_count", self.subsection_count)
             self._subsection_count_in_data = self.subsection_count
 
