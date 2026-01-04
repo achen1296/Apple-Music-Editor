@@ -17,10 +17,9 @@ Here are some examples:
 - add 5 to the play count of all songs that have a certain word in their name (the official program does not let you edit the play count, and even if you could, it would likely only allow you to set the play count to an exact value in a bulk operation)
 - create a playlist with songs matching criteria other than the ones supported by built-in smart playlists, such as regular expression matching
   - possibly with multiple repeats of the same song (something that smart playlists don't do) to increase the probability of it being selected when shuffling
-- automatically change songs' star ratings based on their ratio play count/skip count
-- detect and repair tracks where the file path hasa become incorrect (this often happened to me when editing my library — I discovered that several hundred tracks had become disconnected from their files, and the official program just silently skips over them without saying anything about it)
+- detect where the file path has become incorrect (this often happened to me when editing my library — I discovered that several hundred tracks had become disconnected from their files, and the official program just silently skips over them without saying anything about it) and potentially automatically repair it
 
-I considered making a nice frontend program, but ultimately decided against it. I imagine that if one wants to do something the official program GUI cannot, then it is also likely the case that they would want to do something different from myself, and would have the necessary computer science knowledge to use this code directly. So instead, I've provided the above examples as Python scripts, and hopefully adequate documentation inside the code comments.
+I considered making a nice frontend program, but ultimately decided against it. I imagine that if one wants to do something the official program GUI cannot, then it is also likely the case that they would want to do something different from myself, and would have the necessary computer science knowledge to use this code directly. So instead, I've provided the above examples as Python scripts, and hopefully adequate documentation inside the code comments. (To look up the exact names I used for things, look at the `dict` constants under each class.)
 
 _Note that this code does not support the book subtype of boma sections, because, as mentioned below, my library doesn't have any I could test with, which makes me suspect they are no longer in use anyway._
 
