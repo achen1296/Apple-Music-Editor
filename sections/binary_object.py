@@ -130,6 +130,28 @@ class boma(Section):
         super().__init__(*args, **kwargs)
         self.subtype = self.get_int("subtype")  # convenient to have this
 
+    @override
+    @classmethod
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool | str] = {}):  # type: ignore the whole point is to change the type to declare that a str value is allowed for string children
+        """ As a convenience, if `"subtype"` key is included, then will automatically attach an appropriate child with the `initial_values` not used by `boma` passed on (as none of them have a `"subtype"` themselves and all other keys are automatically handled). """
+        initial_values_for_boma = {
+            k: v
+            for k, v in initial_values.items()
+            if k in cls.offsets
+        }
+        b = super().from_scratch(initial_values_for_boma)  # type: ignore update method overridden handle strings
+        if "subtype" in initial_values_for_boma:
+            initial_values_for_child = {
+                k: v
+                for k, v in initial_values.items()
+                if k not in cls.offsets
+            }
+            child_class = b.subsection_class_by_subtype[initial_values_for_boma["subtype"]]  # type: ignore
+            b.add_child(
+                child_class.from_scratch(initial_values_for_child)  # type: ignore
+            )
+        return b
+
 
 class BinaryObjectParentSection(Section):
     """ Add methods for boma subsections """

@@ -247,6 +247,8 @@ class Section:
         self.subsections.insert(index, s)
         s.parent = self
 
+    add_child = add_subsection
+
     def as_dict(self) -> dict:
         """ Summary dict of known data in this section (not any subsections). """
         return {
@@ -368,7 +370,7 @@ class Section:
                     raise TypeError(f"key for boolean value {v} must be str or int, not {k}")
                 self.set_boolean(k, v)
             else:
-                raise TypeError(f"don't know what to with value {v} (key {k})")
+                raise TypeError(f"don't know what to with value \"{v}\" (key {k})")
 
 
 class Unknown(Section):
