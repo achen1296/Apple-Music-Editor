@@ -26,7 +26,7 @@ class iAma(BinaryObjectParentSection):
         "id_artist": 16,
         "id_apple_music_artist": 52,
         "date_modified_suggestion_flag": 60,
-        "uuid_1_artwork": 64, # UUID is 16 bytes but unpack doesn't have a format specifier for that
+        "uuid_1_artwork": 64,  # UUID is 16 bytes but unpack doesn't have a format specifier for that
         "uuid_2_artwork": 72,
         "id_artist_2": 80,
         "suggestion_flag": 101,
@@ -54,8 +54,22 @@ class iAma(BinaryObjectParentSection):
 
     @override
     @classmethod
-    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
-        a = super().from_scratch(initial_values)
+    def from_scratch(
+        cls,
+        initial_values:  dict[
+            str | int | tuple[int, int],
+
+            bytes | int | bool |
+            dict[
+                str | int | tuple[int, int],
+                bytes | int | bool | str
+            ]
+        ] = {},
+        initial_children: list[Section] = []
+    ):
+        a = super().from_scratch(initial_values, initial_children)
+
+        # experimentally this does not seem necessary, doesn't hurt either though
         if a.get_bytes("id_artist", 8) == b"\x00"*8:
             a.set_bytes("id_artist", random.randbytes(8))
         return a

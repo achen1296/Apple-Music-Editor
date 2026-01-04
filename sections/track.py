@@ -242,6 +242,8 @@ class itma(BinaryObjectParentSection):
         initial_children: list[Section] = []
     ):
         t = super().from_scratch(initial_values, initial_children)
+
+        # experimentally this does not seem necessary, doesn't hurt either though
         if t.get_bytes("id_track", 8) == b"\x00"*8:
             t.set_bytes("id_track", random.randbytes(8))
         return t

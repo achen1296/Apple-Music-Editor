@@ -8,33 +8,24 @@ Based on:
 - https://github.com/rinsuki/musicdb2sqlite
 - https://github.com/jsharkey13/musicdb-to-json (also copied a small amount of code from here, see the comments in my code for details)
 
-However, unlike these, this project aims not only to read the Library.musicdb file, but also to be able to edit it. How can this be, when large parts of the file format remain a mystery? Simple:
-
-- _start with a known valid file_
-- make the desired edits
-- change all of the references (which are hopefully part of the known format) as needed
-  - associated section length
-  - subsection count
-  - some other count, e.g. total song count
-  - pointer IDs
-- copy back all of the other data exactly as-is
-
-This approach means we cannot _add_ whole new entries to arrays, e.g. add a new song. (In the future I might try doing this by copying the mystery data from another entry of the same type.)
-
-_Note that this code does not support the book subtype of boma sections, because, as mentioned below, my library doesn't have any I could test with, which makes me suspect they are no longer in use anyway._
-
-_In general, I just know it works on my own library file with the types of edits I wanted to do, so I can't give any guarantees about what it does to your library file. For this reason I've made it automatically make backups when you use the program to edit your library, unless you specifically turn them off. They will be called e.g. "Library backup 2026-01-01T00.00.00.musicdb" (if you saved the edited version on midnight of January 1, 2026) and placed in the same folder as Library.musicdb._
-
-So far I have:
-
-- edited simple things like the play count of a track, which does not affect any references
-- created a playlist from scratch
-
-I have also made many more discoveries on top of those of the previous people credited above, which makes me hopeful about more complicated edits. Maybe even full understanding of the file! Below, I have combined all known information into what I believe is the most complete public Library.musicdb format description! Eventually I will send this to Gary Vollink, so if his site includes all of the new information, it came from me.
-
 > "If I have seen further, it is by standing on the shoulders of giants."
 
 -Isaac Newton
+
+However, unlike these, this project aims not only to read the Library.musicdb file, but also to be able to edit it. How can this be, when large parts of the file format remain a mystery?
+
+- Firstly, I have discovered a lot more about the format. See below, where I have combined all known information into what I believe is the most complete public Library.musicdb format description!
+- Secondly, making simple edits can be done easily enough by preserving all of the unknown data as-is (this is the major difference with previous projects, which did not preserve every byte in converting to another format).
+- Finally, and perhaps most importantly, it turns out that official Apple Music program is actually quite lenient. As long as the metadata about the [section structure](#section-structure) is correct, it can handle plenty of cases where parts of the data are not entirely consistent (it will set the correct values itself, and maybe it doesn't even read them at all), for example:
+  - the song, playlist, album, and artist counts in [hfma](#hfma-file-header) do not need to be updated
+  - likewise the track count of a [playlist](#lpma-playlist) does not need to be updated
+  - randomized ID numbers do not need to be initialized (although if its an ID number referring to something else, e.g. [playlist item](#ipfa-playlist-item) referring to a [track](#itma-track) by its ID, that obviously _does_ have to be initialized correctly)
+
+Considering that it is not hard to add tracks, thereby creating albums and artists automatically, using the official program, it should be more than useful enough to be able to _edit_ these only, rather than trying to create their data from scratch. However, it does make sense to try making playlists from scratch — which I have successfully done!
+
+_Note that this code does not support the book subtype of boma sections, because, as mentioned below, my library doesn't have any I could test with, which makes me suspect they are no longer in use anyway._
+
+_In general, I just know it works on my own library file with the types of edits I wanted to do, so I can't give any guarantees about what it does to your library file. For this reason I've made it automatically make backups when you use the program to edit your library, unless you specifically turn them off. They will be called e.g. "Library backup 2026-01-01T00.00.00.musicdb" (if you saved the edited version at midnight of January 1, 2026) and placed in the same folder as Library.musicdb._
 
 # Table of Contents
 
@@ -424,7 +415,7 @@ The counter seems to be 4 bytes since it is followed by unrelated data inside of
 
 This finally explains to me why these offsets would chaotically change after unrelated edits, why they are low-ish numbers, and why they are often consecutive/incrementing by 2 depending on the section type.
 
-The purpose of this counter remains unknown.
+The purpose of this counter remains unknown. Apparently, when creating data from scratch, it is not necessary to set this value.
 
 # plma (Library Master)
 

@@ -68,8 +68,21 @@ class iama(BinaryObjectParentSection):
 
     @override
     @classmethod
-    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
-        a = super().from_scratch(initial_values)
+    def from_scratch(
+        cls,
+        initial_values:  dict[
+            str | int | tuple[int, int],
+
+            bytes | int | bool |
+            dict[
+                str | int | tuple[int, int],
+                bytes | int | bool | str
+            ]
+        ] = {},
+        initial_children: list[Section] = []
+    ):
+        a = super().from_scratch(initial_values, initial_children)
+        # experimentally this does not seem necessary, doesn't hurt either though
         if a.get_bytes("id_album", 8) == b"\x00"*8:
             a.set_bytes("id_album", random.randbytes(8))
         return a

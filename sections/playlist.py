@@ -152,6 +152,8 @@ class lpma(BinaryObjectParentSection):
     def data(self):
         super().data
 
+        # experimentally this does not seem necessary, doesn't hurt either though
+
         tracks_total: int = sum(
             isinstance(grandchild, ipfa)
             for child in self.children
