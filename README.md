@@ -1,4 +1,4 @@
-# Apple Music Library.musicdb Interface
+# Apple Music Library.musicdb Editor
 
 This is a Python interface for Apple Music's Library.musicdb file, which can be used to read _and edit_ it (which makes it different from the previous projects credited below).
 
