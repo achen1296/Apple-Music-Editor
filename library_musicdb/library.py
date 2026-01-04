@@ -7,8 +7,14 @@ from typing import Type, override
 
 from Crypto.Cipher import AES
 
-from byte_util import pack_int, unpack_int
-from sections import *
+from .sections.album import lama
+from .sections.artist import lAma
+from .sections.header import hfma, hsma
+from .sections.library_master import plma
+from .sections.playlist import lPma
+from .sections.section import Section
+from .sections.track import ltma
+from .util.byte_util import pack_int, unpack_int
 
 KEY = b"BHUILuilfghuila3"
 CIPHER = AES.new(KEY, AES.MODE_ECB)

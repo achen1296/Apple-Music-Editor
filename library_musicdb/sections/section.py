@@ -3,9 +3,9 @@ from enum import IntEnum
 from io import BytesIO
 from typing import Iterator, Type
 
-from byte_util import (pack_int_into, pack_int_into_be, unpack_int,
-                       unpack_int_be)
-from date_util import datetime_to_int
+from ..util.byte_util import (pack_int_into, pack_int_into_be, unpack_int,
+                              unpack_int_be)
+from ..util.date_util import datetime_to_int
 
 
 class Section:

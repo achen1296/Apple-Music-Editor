@@ -1,8 +1,9 @@
 import re
 from typing import Callable, Iterable, Type
 
-from library_musicdb import *
-from sections.binary_object import StringBase
+from .library import *
+from .sections import Section
+from .sections.binary_object import BinaryObjectParentSection, StringBase
 
 
 class LibrarySearcher:
@@ -256,16 +257,3 @@ class LibrarySearcher:
 
         self.search_actions.append(f)
         return self
-
-
-if __name__ == "__main__":
-    l = Library()
-    ls = (
-        LibrarySearcher()
-        .descendants_of_type(Track)
-        .match_sub_string("title", input("track title: "))
-    )
-    for s in ls.search(l):
-        assert isinstance(s, Track)
-        s.set_sub_int("plays_skips", "play_count", int(input("play count: ")))
-    l.save()

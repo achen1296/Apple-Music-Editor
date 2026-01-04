@@ -3,7 +3,6 @@
 import json
 
 from library_musicdb import *
-from library_search import LibrarySearcher
 
 if __name__ == "__main__":
     lib = Library()

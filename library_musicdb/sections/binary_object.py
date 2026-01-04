@@ -1,7 +1,6 @@
 from abc import ABCMeta
+from enum import IntEnum
 from typing import override
-
-from zmq import IntEnum
 
 from .section import Section
 

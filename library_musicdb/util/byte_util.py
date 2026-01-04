@@ -1,13 +1,6 @@
 import struct
 
 
-def expect_one_of[T](actual: T, expected_patterns: list[T | None], message: str):
-    # copied from https://github.com/jsharkey13/musicdb-to-json
-    if any(actual == x for x in expected_patterns):
-        return
-    raise ValueError(f"{message} (expected: {expected_patterns}, actual: {actual})")
-
-
 def unpack(fmt: str, b: bytes, offset: int):
     # copied from https://github.com/jsharkey13/musicdb-to-json
     # changes:
