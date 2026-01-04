@@ -81,9 +81,11 @@ class String(StringBase):
     def update(self, d: dict[str | int | tuple[int, int], bytes | int | bool | str]):
         if not self.encoding:
             # for from_scratch need to make sure the encoding is set before the string
+            encoding: int = d.get("encoding", self.default_values["encoding"])  # type: ignore
             self._set_encoding(
-                d.get("encoding", self.default_values["encoding"])  # type: ignore
+                encoding
             )
+            self.set_int("encoding", encoding)
 
         super().update(d)
 
