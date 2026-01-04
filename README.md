@@ -1,8 +1,32 @@
-# Apple Music Library.musicdb Editor
+# Apple Music Library.musicdb Interface
 
-Editor for Apple Music's Library.musicdb file.
+This is a Python interface for Apple Music's Library.musicdb file, which can be used to read _and edit_ it (which makes it different from the previous projects credited below).
 
-Based on:
+While making this, I also took my turn at learning more about the file format. Jump to the [Table of Contents](#table-of-contents) below for what I believe is the most complete public Library.musicdb description! It includes all of previously known information along with my own discoveries and commentary.
+
+# Using This Code
+
+Considering the functionality already covered by the official program, in my opinion this code is most useful for:
+
+- making bulk changes other than those of the kind "set this field to the same value on all of these items" (which the official program can already do)
+- changing things that the official program GUI does not allow you to change at all, e.g. track play count
+- fixing problems created by the official program itself (usually due to bugs and mysterious "unexpected errors")
+
+Here are some examples:
+
+- add 5 to the play count of all songs that have a certain word in their name (the official program does not let you edit the play count, and even if you could, it would likely only allow you to set the play count to an exact value in a bulk operation)
+- create a playlist with songs matching criteria other than the ones supported by built-in smart playlists, such as regular expression matching
+  - possibly with multiple repeats of the same song (something that smart playlists don't do) to increase the probability of it being selected when shuffling
+- automatically change songs' star ratings based on their ratio play count/skip count
+- detect and repair tracks where the file path hasa become incorrect (this often happened to me when editing my library — I discovered that several hundred tracks had become disconnected from their files, and the official program just silently skips over them without saying anything about it)
+
+I considered making a nice frontend program, but ultimately decided against it. I imagine that if one wants to do something the official program GUI cannot, then it is also likely the case that they would want to do something different from myself, and would have the necessary computer science knowledge to use this code directly. So instead, I've provided the above examples as Python scripts, and hopefully adequate documentation inside the code comments.
+
+_Note that this code does not support the book subtype of boma sections, because, as mentioned below, my library doesn't have any I could test with, which makes me suspect they are no longer in use anyway._
+
+_In general, I just know it works on my own library file with the types of edits I wanted to do, so I can't give any guarantees about what it does to your library file. For this reason I've made it automatically make backups when you use the program to edit your library, unless you specifically turn them off. They will be called e.g. "Library backup 2026-01-01T00.00.00.musicdb" (if you saved the edited version at midnight of January 1, 2026) and placed in the same folder as Library.musicdb._
+
+# Acknowledgements
 
 - https://home.vollink.com/gary/playlister/musicdb.html (Gary Vollink) and everyone credited by him at the bottom
 - https://github.com/rinsuki/musicdb2sqlite
@@ -12,20 +36,7 @@ Based on:
 
 -Isaac Newton
 
-However, unlike these, this project aims not only to read the Library.musicdb file, but also to be able to edit it. How can this be, when large parts of the file format remain a mystery?
-
-- Firstly, I have discovered a lot more about the format. See below, where I have combined all known information into what I believe is the most complete public Library.musicdb format description!
-- Secondly, making simple edits can be done easily enough by preserving all of the unknown data as-is (this is the major difference with previous projects, which did not preserve every byte in converting to another format).
-- Finally, and perhaps most importantly, it turns out that official Apple Music program is actually quite lenient. As long as the metadata about the [section structure](#section-structure) is correct, it can handle plenty of cases where parts of the data are not entirely consistent (it will set the correct values itself, and maybe it doesn't even read them at all), for example:
-  - the song, playlist, album, and artist counts in [hfma](#hfma-file-header) do not need to be updated
-  - likewise the track count of a [playlist](#lpma-playlist) does not need to be updated
-  - randomized ID numbers do not need to be initialized (although if its an ID number referring to something else, e.g. [playlist item](#ipfa-playlist-item) referring to a [track](#itma-track) by its ID, that obviously _does_ have to be initialized correctly)
-
-Considering that it is not hard to add tracks, thereby creating albums and artists automatically, using the official program, it should be more than useful enough to be able to _edit_ these only, rather than trying to create their data from scratch. However, it does make sense to try making playlists from scratch — which I have successfully done!
-
-_Note that this code does not support the book subtype of boma sections, because, as mentioned below, my library doesn't have any I could test with, which makes me suspect they are no longer in use anyway._
-
-_In general, I just know it works on my own library file with the types of edits I wanted to do, so I can't give any guarantees about what it does to your library file. For this reason I've made it automatically make backups when you use the program to edit your library, unless you specifically turn them off. They will be called e.g. "Library backup 2026-01-01T00.00.00.musicdb" (if you saved the edited version at midnight of January 1, 2026) and placed in the same folder as Library.musicdb._
+This quote feels appropriate, since I am the fourth in this line where each person credited the others before themself.
 
 # Table of Contents
 
@@ -143,6 +154,17 @@ To determine the size of an unknown section that doesn't have the size in the us
 # General Format Notes
 
 [Back to TOC](#table-of-contents)
+
+How can we successfully edit the file when large parts of the file format remain a mystery?
+
+- Firstly, I have discovered a lot more about the format.
+- Secondly, making simple edits can be done easily enough by preserving all of the unknown data as-is (this is the major difference with previous projects, which did not preserve every byte in converting to another format).
+- Finally, and perhaps most importantly, it turns out that official Apple Music program is actually quite lenient. Actually, because of this, in my opinion Gary Vollink was being overly pessimistic when he said "this information will NOT be enough to create or even manipulate a musicdb externally" — most manipulations I can think of could have been done without any of my new discoveries. As long as the metadata about the [section structure](#section-structure) is correct, it can handle plenty of cases where parts of the data are uninitialized (it will set correct values itself, and maybe it doesn't even read them at all in some cases), for example:
+
+  - the song, playlist, album, and artist counts in [hfma](#hfma-file-header) do not need to be set
+  - likewise the track count of a [playlist](#lpma-playlist) does not need to be set
+  - randomized ID numbers do not need to be initialized (although if its an ID number referring to something else, e.g. [playlist item](#ipfa-playlist-item) referring to a [track](#itma-track) by its ID, that obviously _does_ have to be initialized correctly)
+  - 0 is fine as a default for a lot of values in general (it is almost always the default used by the official program)
 
 - I will assume little-endianness because nobody has documented a case of big-endianness, even though Gary Vollink speculates it might be possible. Therefore 0x 04 03 02 01 interpreted as an unsigned int is 16909060, not 67305985.
   - UTF-16 strings are always little-endian.
