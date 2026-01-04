@@ -236,7 +236,10 @@ class BinaryObjectParentSection(Section):
         raise KeyError(self, subtype)
 
     def get_sub_string(self, subtype: str | int):
-        subsection = self.data_subsection_of_subtype(subtype)
+        try:
+            subsection = self.data_subsection_of_subtype(subtype)
+        except KeyError:
+            return ""  # no section is stored instead of an empty string section
 
         if isinstance(subsection.child, StringBase):
             return subsection.child.get_string()
