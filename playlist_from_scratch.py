@@ -3,17 +3,6 @@ from library_musicdb import *
 if __name__ == "__main__":
     lib = Library()
 
-    playlists = lib.playlists
-
-    new_playlist = Playlist.from_scratch()
-    playlists.add_subsection(new_playlist)
-
-    playlist_name = bomaPlaylist.from_scratch({
-        "subtype": 0xC8,
-        "string": "playlist from scratch",
-    })
-    new_playlist.add_subsection(playlist_name)
-
     tracks = lib.tracks
     id_track = None
     for t in tracks.subsections:
@@ -22,12 +11,20 @@ if __name__ == "__main__":
         break
     assert id_track is not None
 
-    playlist_item = bomaPlaylist.from_scratch({
-        "subtype": 0xCE,
-        "id_track": id_track,
-    })
-    new_playlist.add_subsection(playlist_item)
-
-    new_playlist.set_int("tracks_total", 1)
+    lib.playlists.add_child(
+        Playlist.from_scratch(
+            {
+                "name": {
+                    "string": "playlist from scratch"
+                },
+            },
+            [
+                bomaPlaylist.from_scratch({
+                    "subtype": Playlist.data_subtypes["playlist_item"],
+                    "id_track": id_track,
+                })
+            ]
+        )
+    )
 
     lib.save()

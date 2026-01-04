@@ -24,7 +24,7 @@ class StringBase(Section, metaclass=ABCMeta):
         # size will be taken care of in data property
 
     @override
-    def update(self, d: dict[str | int | tuple[int, int], bytes | int | bool | str]):  # type: ignore the whole point is to change the type to allow a str value
+    def update(self, d: dict[str | int | tuple[int, int], bytes | int | bool | str]):  # type: ignore intentionally changing the type to allow a str value
         for k, v in d.items():
             if isinstance(v, str):
                 if k != "string":
@@ -41,7 +41,7 @@ class StringBase(Section, metaclass=ABCMeta):
 
     @override
     @classmethod
-    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool | str] = {}):  # type: ignore the whole point is to change the type to declare that a str value is allowed (no function changes)
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool | str] = {}):  # type: ignore intentionally changing the type to declare that a str value is allowed (no function changes)
         return super().from_scratch(initial_values)  # type: ignore update method overridden handle strings
 
 
@@ -92,6 +92,7 @@ StringPreferUTF16 = String
 StringPreferUTF16LE = String
 
 # UTF16-BE is not a possible option for these
+
 
 class StringPreferUTF8(String):
     default_values = {
@@ -144,14 +145,14 @@ class boma(Section):
 
     @override
     @classmethod
-    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool | str] = {}):  # type: ignore the whole point is to change the type to declare that a str value is allowed for string children
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool | str] = {}, initial_children: list[Section] = []):  # type: ignore intentionally changing the type to declare that a str value is allowed for string children
         """ As a convenience, if `"subtype"` key is included, then will automatically attach an appropriate child with the `initial_values` not used by `boma` passed on (as none of them have a `"subtype"` themselves and all other keys are automatically handled). """
         initial_values_for_boma = {
             k: v
             for k, v in initial_values.items()
             if k in cls.offsets
         }
-        b = super().from_scratch(initial_values_for_boma)  # type: ignore update method overridden handle strings
+        b = super().from_scratch(initial_values_for_boma, initial_children)  # type: ignore update method overridden handle strings
         if "subtype" in initial_values_for_boma:
             initial_values_for_child = {
                 k: v
@@ -172,6 +173,58 @@ class BinaryObjectParentSection(Section):
     """ Used to assign a name to subtype numbers for readability purposes. """
     data_subtype_aliases: set[str] = set()
     """ Added data subtype names to this set to prevent repeating the same offset in `as_dict`. """
+
+    @override
+    @classmethod
+    def from_scratch(  # type: ignore intentionally allowing dict value for boma children and str values for the grandchildren
+        cls,
+        initial_values:  dict[
+            str | int | tuple[int, int],
+
+            bytes | int | bool |
+            dict[
+                str | int | tuple[int, int],
+                bytes | int | bool | str
+            ]
+        ] = {},
+        initial_children: list[Section] = []
+    ):
+        return super().from_scratch(initial_values, initial_children)  # type: ignore
+
+    @override
+    def update(  # type: ignore intentionally allowing dict value for boma children and str values for the grandchildren
+        self,
+        d: dict[
+            str | int | tuple[int, int],
+
+            bytes | int | bool |
+            dict[
+                str | int | tuple[int, int],
+                bytes | int | bool | str
+            ]
+        ]
+    ):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                if not isinstance(k, str):
+                    raise TypeError(f"key for dict value {v} must be str, not {k}")
+                assert self.subsection_class
+                self.add_child(
+                    self.subsection_class.from_scratch(
+                        {  # type: ignore str grandchildren
+                            **v,
+                            "subtype": self.data_subtypes[k]
+                        }
+                    )
+                )
+
+        d = {
+            k: v
+            for k, v in d.items()
+            if not isinstance(v, dict)
+        }
+
+        return super().update(d)  # type: ignore
 
     def data_subsection_of_subtype(self, subtype: str | int):
         if isinstance(subtype, str):

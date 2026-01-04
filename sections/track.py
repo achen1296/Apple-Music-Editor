@@ -228,8 +228,20 @@ class itma(BinaryObjectParentSection):
 
     @override
     @classmethod
-    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
-        t = super().from_scratch(initial_values)
+    def from_scratch(
+        cls,
+        initial_values:  dict[
+            str | int | tuple[int, int],
+
+            bytes | int | bool |
+            dict[
+                str | int | tuple[int, int],
+                bytes | int | bool | str
+            ]
+        ] = {},
+        initial_children: list[Section] = []
+    ):
+        t = super().from_scratch(initial_values, initial_children)
         if t.get_bytes("id_track", 8) == b"\x00"*8:
             t.set_bytes("id_track", random.randbytes(8))
         return t

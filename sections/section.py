@@ -151,21 +151,27 @@ class Section:
             self._last_total_size = -1
 
     @classmethod
-    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}, initial_children: list["Section"] = []):
         """ Any data you don't set in `initial_values` will default to `default_values` if set there, otherwise 0, unless another part of this class takes care of it for you (See `__init__` and `update`). """
         values = {
             **cls.default_values,
             **initial_values,
         }
+
         initial_size = values["size"]
         # This better be in there! All subclasses should provide this in default_values
         assert isinstance(initial_size, int)
+
         sec = cls(
             BytesIO(b"\x00" * initial_size),
             size_hint=initial_size,
             from_scratch=True,
         )
         sec.update(initial_values)
+
+        for c in initial_children:
+            sec.add_child(c)
+
         return sec
 
     @property

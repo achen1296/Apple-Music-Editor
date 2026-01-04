@@ -1,5 +1,6 @@
 from collections import defaultdict
 from enum import IntEnum
+from io import BytesIO
 import random
 from typing import override
 
@@ -34,15 +35,15 @@ class ipfa(Section):
 
     @override
     @classmethod
-    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
-        i = super().from_scratch(initial_values)
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}, initial_children: list[Section] = []):
+        i = super().from_scratch(initial_values, initial_children)
         if i.get_bytes("id_ipfa", 8) == b"\x00"*8:
             i.set_bytes("id_ipfa", random.randbytes(8))
         return i
 
 
 class bomaPlaylist(boma):
-    subsection_class_by_subtype = {
+    subsection_class_by_subtype: dict[int, type[Section]] = {
         0xCE: ipfa,
         0xCA: SmartPlaylistOptions,
         0xC9: SLst,
@@ -113,9 +114,30 @@ class lpma(BinaryObjectParentSection):
     }
 
     @override
+    def __init__(self, * args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._last_tracks_total = sum(
+            isinstance(grandchild, ipfa)
+            for child in self.children
+            for grandchild in child.children
+        )
+
+    @override
     @classmethod
-    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
-        p = super().from_scratch(initial_values)
+    def from_scratch(
+        cls,
+        initial_values:  dict[
+            str | int | tuple[int, int],
+
+            bytes | int | bool |
+            dict[
+                str | int | tuple[int, int],
+                bytes | int | bool | str
+            ]
+        ] = {},
+        initial_children: list[Section] = []
+    ):
+        p = super().from_scratch(initial_values, initial_children)
 
         if p.get_bytes("id_playlist", 8) == b"\x00"*8:
             p.set_bytes("id_playlist", random.randbytes(8))
@@ -124,6 +146,22 @@ class lpma(BinaryObjectParentSection):
             p.set_int("date_created", datetime_to_int())
 
         return p
+
+    @property
+    @override
+    def data(self):
+        super().data
+
+        tracks_total: int = sum(
+            isinstance(grandchild, ipfa)
+            for child in self.children
+            for grandchild in child.children
+        )
+        if self._last_tracks_total != tracks_total:
+            self.set_int("tracks_total", tracks_total)
+            self._last_tracks_total = tracks_total
+
+        return self._data
 
 
 class lPma(Section):
