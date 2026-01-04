@@ -36,6 +36,9 @@ class hfma(Section):  # inner hfma only, not outer hfma which is Library
         "id_apple_music_user_apple": 8,
         "id_itunes_library": 8,
     })
+    default_values = {
+        "size": 160
+    }
 
 
 class hsma(Section):
@@ -44,6 +47,9 @@ class hsma(Section):
         **Section.offsets,
         "total_size": 8,
         "subtype": 12,
+    }
+    default_values = {
+        "size": 56
     }
     subsection_class_by_subtype = {
         3: hfma,

@@ -1,5 +1,9 @@
 from collections import defaultdict
 from enum import IntEnum
+import random
+from typing import override
+
+from date_util import datetime_to_int
 
 from .smart_playlist_rule import SLst
 
@@ -24,6 +28,17 @@ class ipfa(Section):
         "id_track": 8,
         "id_ipfa_2": 8,
     })
+    default_values = {
+        "size": 68
+    }
+
+    @override
+    @classmethod
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
+        i = super().from_scratch(initial_values)
+        if i.get_bytes("id_ipfa", 8) == b"\x00"*8:
+            i.set_bytes("id_ipfa", random.randbytes(8))
+        return i
 
 
 class bomaPlaylist(boma):
@@ -81,6 +96,9 @@ class lpma(BinaryObjectParentSection):
         "special_playlist": SpecialPlaylist,
         "suggestion_flag": SuggestionFlag,
     }
+    default_values = {
+        "size": 368
+    }
 
     data_subtypes = {
         "name": 0xc8,
@@ -94,6 +112,19 @@ class lpma(BinaryObjectParentSection):
         "title",
     }
 
+    @override
+    @classmethod
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
+        p = super().from_scratch(initial_values)
+
+        if p.get_bytes("id_playlist", 8) == b"\x00"*8:
+            p.set_bytes("id_playlist", random.randbytes(8))
+
+        if p.get_int("date_created") == 0:
+            p.set_int("date_created", datetime_to_int())
+
+        return p
+
 
 class lPma(Section):
     expected_signature = b"lPma"
@@ -101,4 +132,7 @@ class lPma(Section):
     offsets = {
         **Section.offsets,
         "subsection_count": 8,
+    }
+    default_values = {
+        "size": 92
     }

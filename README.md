@@ -26,6 +26,7 @@ _Note that this code does not support the book subtype of boma sections, because
 _In general, I just know it works on my own library file with the types of edits I wanted to do, so I can't give any guarantees about what it does to your library file. For this reason I've made it automatically make backups when you use the program to edit your library, unless you specifically turn them off. They will be called e.g. "Library backup 2026-01-01T00.00.00.musicdb" (if you saved the edited version on midnight of January 1, 2026) and placed in the same folder as Library.musicdb._
 
 So far I have:
+
 - edited simple things like the play count of a track, which does not affect any references
 - created a playlist from scratch
 
@@ -337,7 +338,7 @@ Seems completely understood: ✓
 
 | Offset | Length | Meaning                    | Examples Value(s) |
 | ------ | ------ | -------------------------- | ----------------- |
-| 0      | 4      | Section signature          | hsma              |
+| 0      | 4      | Section signature          | boma              |
 | 4      | 4      | Section length             | 20                |
 | 8      | 4      | Associated sections length | 160               |
 | 12     | 4      | Section subtype            | 3                 |
@@ -370,13 +371,13 @@ Children: Depends on subtype. See each of the parents, which list their grandchi
 
 Seems completely understood: X
 
-| Offset | Length   | Meaning                                                                                                           | Examples Value(s) |
-| ------ | -------- | ----------------------------------------------------------------------------------------------------------------- | ----------------- |
-| 0      | 4        | Section signature, 1 for UTF-16 and 2 for UTF-8 (Would the program accept the other encoding if this is changed?) | 1, 2              |
-| 4      | 4        | Section length _starting from offset 16_ (i.e. the string length)                                                 | 100               |
-| 8      | 4?       | Parent subtype counter (see below)                                                                                |
+| Offset | Length   | Meaning                                                                                                                                                 | Examples Value(s) |
+| ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| 0      | 4        | String encoding (could be interpreted as a "signature"), 1 for UTF-16 and 2 for UTF-8 (Would the program accept the other encoding if this is changed?) | 1, 2              |
+| 4      | 4        | Section length _starting from offset 16_ (i.e. the string length)                                                                                       | 100               |
+| 8      | 4?       | Parent subtype counter (see below)                                                                                                                      |
 | ...    |
-| 16     | variable | The string data in the specified encoding                                                                         | any string        |
+| 16     | variable | The string data in the specified encoding                                                                                                               | any string        |
 
 Offset 8: counts up starting from 0, separately for each parent subtype value. For example, you might have in this order:
 

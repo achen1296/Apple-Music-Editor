@@ -45,6 +45,8 @@ class Section:
     """ Indicate that an offset should use values from a specific `IntEnum`. Will show a warning (not an exception to leave the door open for future valid values that the code does not know) if this is not followed in `set_int`. This also improves readability of `__str__` output. """
     offset_aliases: set[str] = set()
     """ Added offset names to this set to prevent repeating the same offset in `as_dict`. """
+    default_values: dict = {}
+    """ Used for `from_scratch`, see that method. Subclasses should at minimum provide a default `"size"`! """
 
     def __init__(
         self, data: BytesIO,
@@ -149,8 +151,15 @@ class Section:
             self._last_total_size = -1
 
     @classmethod
-    def from_scratch(cls, initial_size: int, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
-        """ See `__init__` and `update`. Any data you don't set in `initial_values` will default to 0, unless another part of this class takes care of it for you. """
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
+        """ Any data you don't set in `initial_values` will default to `default_values` if set there, otherwise 0, unless another part of this class takes care of it for you (See `__init__` and `update`). """
+        values = {
+            **cls.default_values,
+            **initial_values,
+        }
+        initial_size = values["size"]
+        # This better be in there! All subclasses should provide this in default_values
+        assert isinstance(initial_size, int)
         sec = cls(
             BytesIO(b"\x00" * initial_size),
             size_hint=initial_size,
@@ -364,6 +373,7 @@ class Section:
 
 class Unknown(Section):
     offsets = {}  # remove size offset to rely on the size_hint from parent
+    # no "size" in default_values, doesn't make sense to make this from_scratch
 
 
 class BigEndianSection(Section):

@@ -1,5 +1,7 @@
 from collections import defaultdict
 from enum import IntEnum
+import random
+from typing import override
 
 from .binary_object import BinaryObjectParentSection, String, boma
 from .section import Section
@@ -50,6 +52,9 @@ class iama(BinaryObjectParentSection):
         "star_rating_inheritance": StarRatingInheritance,
         "suggestion_flag": SuggestionFlag,
     }
+    default_values = {
+        "size": 140
+    }
 
     data_subtypes = {
         "name": 0x12c,
@@ -61,6 +66,14 @@ class iama(BinaryObjectParentSection):
         "title",
     }
 
+    @override
+    @classmethod
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
+        a = super().from_scratch(initial_values)
+        if a.get_bytes("id_album", 8) == b"\x00"*8:
+            a.set_bytes("id_album", random.randbytes(8))
+        return a
+
 
 class lama(Section):
     expected_signature = b"lama"
@@ -68,4 +81,7 @@ class lama(Section):
     offsets = {
         **Section.offsets,
         "subsection_count": 8,
+    }
+    default_values = {
+        "size": 48
     }

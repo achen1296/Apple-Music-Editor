@@ -1,6 +1,3 @@
-import random
-
-from date_util import datetime_to_int
 from library_musicdb import *
 
 if __name__ == "__main__":
@@ -8,19 +5,17 @@ if __name__ == "__main__":
 
     playlists = lib.playlists
 
-    new_playlist = Playlist.from_scratch(368, {
-        "date_created": datetime_to_int(),
-        "id_playlist": random.randrange(0, 1 << (8*8)),
-    })
+    new_playlist = Playlist.from_scratch()
     playlists.add_subsection(new_playlist)
 
-    name_boma = bomaPlaylist.from_scratch(20, {"subtype": 0xC8})
+    name_boma = bomaPlaylist.from_scratch({"subtype": 0xC8})
     new_playlist.add_subsection(name_boma)
 
-    name_string = String.from_scratch(16, initial_string="playlist from scratch", encoding="utf_16_le")
+    name_string = String.from_scratch({
+        "string": "playlist from scratch", "encoding": StringEncoding.UTF_16_LE})
     name_boma.add_subsection(name_string)
 
-    ipfa_boma = bomaPlaylist.from_scratch(20, {"subtype": 0xCE})
+    ipfa_boma = bomaPlaylist.from_scratch({"subtype": 0xCE})
     new_playlist.add_subsection(ipfa_boma)
 
     tracks = lib.tracks
@@ -31,8 +26,7 @@ if __name__ == "__main__":
         break
     assert id_track is not None
 
-    new_ipfa = ipfa.from_scratch(68, {
-        "id_ipfa": random.randrange(0, 1 << (8*8)),
+    new_ipfa = ipfa.from_scratch({
         "id_track": id_track,
     })
     ipfa_boma.add_subsection(new_ipfa)
@@ -40,6 +34,10 @@ if __name__ == "__main__":
 
     with open("playlist from scratch.bin", "wb") as f:
         for s in playlists:
+            f.write(s.data)
+
+    with open("library with playlist from scratch.bin", "wb") as f:
+        for s in lib:
             f.write(s.data)
 
     lib.save()

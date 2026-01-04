@@ -107,6 +107,10 @@ class Library(hfma):
 
     This class does not maintain what would otherwise be its "total_size" (the length of the entire file) because that also depends on the encryption/compression process, so that's handled in `save_library_bytes`. """
 
+    default_values = {
+        "size": 160
+    }
+
     @override
     def __init__(self, library: bytes | bytearray | Path | str = DEFAULT_LIBRARY_FILE):
         if isinstance(library, Path) or isinstance(library, str):

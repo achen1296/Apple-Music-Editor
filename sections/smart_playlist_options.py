@@ -62,3 +62,6 @@ class SmartPlaylistOptions(Section):
         "limit_selection_method": LimitSelectionMethod,
         "limit_selection_method_modifier": LimitSelectionMethodModifier,
     }
+    default_values={
+        "size": 112
+    }

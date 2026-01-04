@@ -1,4 +1,6 @@
 from collections import defaultdict
+import random
+from typing import override
 
 from .binary_object import (BinaryObjectParentSection, RawStringUTF8, String,
                             boma)
@@ -40,12 +42,23 @@ class iAma(BinaryObjectParentSection):
     offset_int_enums = {
         "suggestion_flag": SuggestionFlag,
     }
+    default_values = {
+        "size": 132
+    }
 
     data_subtypes = {
         "artist": 0x190,
         "sort_artist": 0x191,
         "plist_artwork_url": 0x192,
     }
+
+    @override
+    @classmethod
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
+        a = super().from_scratch(initial_values)
+        if a.get_bytes("id_artist", 8) == b"\x00"*8:
+            a.set_bytes("id_artist", random.randbytes(8))
+        return a
 
 
 class lAma(Section):
@@ -54,4 +67,7 @@ class lAma(Section):
     offsets = {
         **Section.offsets,
         "subsection_count": 8,
+    }
+    default_values = {
+        "size": 100
     }

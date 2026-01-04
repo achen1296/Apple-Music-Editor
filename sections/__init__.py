@@ -1,8 +1,9 @@
 from .album import StarRatingInheritance, bomaAlbum, iama, lama
 from .artist import bomaArtist, iAma, lAma
-from .binary_object import (AnyString, BinaryObjectParentSection, RawString,
+from .binary_object import (BinaryObjectParentSection, RawString,
                             RawStringUTF8, RawStringUTF16, RawStringUTF16BE,
-                            RawStringUTF16LE, String, boma)
+                            RawStringUTF16LE, String, StringBase,
+                            StringEncoding, boma)
 from .header import hfma, hsma
 from .library_master import _1F6, _1FF, bomaLibraryMaster, plma
 from .playlist import (SLst, SmartPlaylistOptions, SpecialPlaylist,

@@ -2,7 +2,7 @@ import re
 from typing import Callable, Iterable, Type
 
 from library_musicdb import *
-from sections.binary_object import AnyString
+from sections.binary_object import StringBase
 
 
 class LibrarySearcher:
@@ -189,7 +189,7 @@ class LibrarySearcher:
 
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, AnyString):
+                if isinstance(s, StringBase):
                     string = s.get_string()
                     if not case_sensitive:
                         string = string.lower()
@@ -202,7 +202,7 @@ class LibrarySearcher:
     def re_match_string(self, pattern: str | re.Pattern, *, re_flags=re.I):
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
-                if isinstance(s, AnyString):
+                if isinstance(s, StringBase):
                     string = s.get_string()
                     if re.search(pattern, string, re_flags):
                         yield s

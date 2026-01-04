@@ -1,5 +1,7 @@
 from collections import defaultdict
 from enum import IntEnum
+import random
+from typing import override
 
 from .binary_object import (BinaryObjectParentSection, RawStringUTF8, String,
                             boma)
@@ -35,6 +37,9 @@ class TrackNumerics(Section):
         "library_folder_count": 2,
         "artwork_count": 2,
     })
+    default_values = {
+        "size": 364
+    }
 
 
 class TrackPlaysSkips(Section):
@@ -50,6 +55,9 @@ class TrackPlaysSkips(Section):
         "skip_count": 32,
         "true_skip_count": 36,
     }
+    default_values = {
+        "size": 52
+    }
 
 
 class Video(Section):
@@ -59,6 +67,9 @@ class Video(Section):
         "height": 0,
         "width": 4,
         "framerate": 48,
+    }
+    default_values = {
+        "size": 52  # not sure this is right, see readme
     }
 
 
@@ -165,6 +176,9 @@ class itma(BinaryObjectParentSection):
         "suggestion_flag": SuggestionFlag,
         "star_rating": StarRating,
     }
+    default_values = {
+        "size": 376
+    }
 
     data_subtypes = {
         "track_numerics": 0x1,
@@ -210,6 +224,14 @@ class itma(BinaryObjectParentSection):
         "title",
     }
 
+    @override
+    @classmethod
+    def from_scratch(cls, initial_values: dict[str | int | tuple[int, int], bytes | int | bool] = {}):
+        t = super().from_scratch(initial_values)
+        if t.get_bytes("id_track", 8) == b"\x00"*8:
+            t.set_bytes("id_track", random.randbytes(8))
+        return t
+
 
 class ltma(Section):
     expected_signature = b"ltma"
@@ -217,4 +239,7 @@ class ltma(Section):
     offsets = {
         **Section.offsets,
         "subsection_count": 8,
+    }
+    default_values = {
+        "size": 92
     }

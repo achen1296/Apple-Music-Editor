@@ -31,6 +31,9 @@ class SLst(BigEndianSection):
         "conjunction": Conjunction,
         "all_any": Conjunction,
     }
+    default_values = {
+        "size": 136
+    }
 
 
 def negate_comparison_method(i: int):
@@ -255,6 +258,13 @@ class SmartPlaylistRuleArguments(BigEndianSection):
         f"argument_{i}": i*8
         for i in range(0, MAX_ARGUMENTS)
     }
+    default_values = {
+        "size": 68,
+        "argument_0": 1,
+        "argument_2": 1,
+        "argument_3": 1,
+        "argument_5": 1,
+    }
 
     arguments_in_use: list[str] = []  # will be reassigned by parent
 
@@ -294,10 +304,13 @@ class SmartPlaylistRule(BigEndianSection):
     }
     # offset_int_enums = {}
     # to be set depending on the actual values encountered
+    default_values = {
+        "size": 56
+    }
 
     @override
     def __init__(self, data: BytesIO, *args, from_scratch=False, **kwargs):
-        super().__init__(data, *args, **kwargs)
+        super().__init__(data, *args, from_scratch=from_scratch, **kwargs)
 
         # figure out field type and arguments in use
         # cannot just look for the default values to determine arguments in use because some actual values collide with them

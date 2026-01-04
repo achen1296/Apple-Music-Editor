@@ -10,6 +10,9 @@ class _1F6(Section):
         # no **Section.offsets: does not have a typical size offset
         # ???
     }
+    default_values = {
+        "size": 20
+    }
 
 
 class _1FF(Section):
@@ -22,6 +25,9 @@ class _1FF(Section):
         "library_id": 8,
         "library_id_2": 8,
     })
+    default_values = {
+        "size": 44
+    }
 
 
 class bomaLibraryMaster(boma):
@@ -52,6 +58,9 @@ class plma(BinaryObjectParentSection):
         "id_library_2": 8,
         "checkbox_keep_media_folder_organized": 1,
     })
+    default_values = {
+        "size": 194
+    }
 
     data_subtypes = {
         # "unknown", "found under plma": 0x1f6,
