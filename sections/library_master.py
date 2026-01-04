@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from .binary_object import (BinaryObjectParentSection, RawStringUTF8,
-                            RawStringUTF16, String, boma)
+                            RawStringUTF16, StringPreferUTF8, boma)
 from .section import Section
 
 
@@ -34,7 +34,7 @@ class bomaLibraryMaster(boma):
     subsection_class_by_subtype = {
         0x1F6: _1F6,
         0x1FF: _1FF,
-        0x1F8: String,
+        0x1F8: StringPreferUTF8,
         0x1FC: RawStringUTF8,
         0x1FD: RawStringUTF16,
         0x200: RawStringUTF16,

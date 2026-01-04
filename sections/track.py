@@ -3,7 +3,7 @@ from enum import IntEnum
 import random
 from typing import override
 
-from .binary_object import (BinaryObjectParentSection, RawStringUTF8, String,
+from .binary_object import (BinaryObjectParentSection, RawStringUTF8, String, StringPreferUTF8,
                             boma)
 from .section import Section
 from .shared_enums import StarRating, SuggestionFlag
@@ -80,6 +80,8 @@ class bomaTrack(boma):
             0x1: TrackNumerics,
             0x17: TrackPlaysSkips,
             0x24: Video,
+
+            0xB: StringPreferUTF8,
 
             0x36: RawStringUTF8,
             0x38: RawStringUTF8,

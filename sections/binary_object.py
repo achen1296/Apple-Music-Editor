@@ -88,6 +88,18 @@ class String(StringBase):
         super().update(d)
 
 
+StringPreferUTF16 = String
+StringPreferUTF16LE = String
+
+# UTF16-BE is not a possible option for these
+
+class StringPreferUTF8(String):
+    default_values = {
+        **String.default_values,
+        "encoding": "utf_8"
+    }
+
+
 class RawString(StringBase, metaclass=ABCMeta):  # abstract because no encoding
     offsets = {
         # no **Section.offsets: does not have a typical size offset

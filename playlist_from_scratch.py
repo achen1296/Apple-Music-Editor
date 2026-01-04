@@ -11,7 +11,6 @@ if __name__ == "__main__":
     playlist_name = bomaPlaylist.from_scratch({
         "subtype": 0xC8,
         "string": "playlist from scratch",
-        "encoding": StringEncoding.UTF_16_LE
     })
     new_playlist.add_subsection(playlist_name)
 
