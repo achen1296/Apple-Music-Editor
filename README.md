@@ -10,6 +10,7 @@ Considering the functionality already covered by the official program, in my opi
 
 - making bulk changes other than those of the kind "set this field to the same value on all of these items" (which the official program can already do)
 - changing things that the official program GUI does not allow you to change at all, e.g. track play count
+- doing things that are inconvenient in the official program, such as adding the same song to more than one playlist quickly
 - fixing problems created by the official program itself (usually due to bugs and mysterious "unexpected errors")
 
 Here are some examples:
