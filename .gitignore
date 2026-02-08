@@ -2,3 +2,8 @@
 **.json
 **.bin
 **.txt
+
+!requirements.txt
+
+node_modules
+.venv
