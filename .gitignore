@@ -3,7 +3,9 @@
 **.bin
 **.txt
 
+.venv
 !requirements.txt
 
 node_modules
-.venv
+!package.json
+!package-lock.json
