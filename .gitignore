@@ -5,6 +5,7 @@
 
 .venv
 !requirements.txt
+!requirements_player.txt
 
 node_modules
 !package.json

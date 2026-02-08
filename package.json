@@ -11,5 +11,8 @@
   "devDependencies": {
     "electron": "^40.2.1"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "zeromq": "^6.5.0"
+  }
 }
