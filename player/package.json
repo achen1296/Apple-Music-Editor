@@ -2,7 +2,7 @@
   "name": "apple-music-editor",
   "version": "1.0.0",
   "description": "",
-  "main": "main.ts",
+  "main": "main.js",
   "scripts": {
     "electron": "electron ."
   },
@@ -11,8 +11,9 @@
   "devDependencies": {
     "electron": "^40.2.1"
   },
-  "type": "module",
+  "type": "commonjs",
   "dependencies": {
+    "typescript": "^5.9.3",
     "zeromq": "^6.5.0"
   }
 }

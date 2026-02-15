@@ -1,6 +1,9 @@
 import sys
 import zmq
 
+sys.path.append("..")
+
+from library_musicdb import Library
 
 def main(port: int):
     context = zmq.Context()

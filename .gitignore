@@ -1,4 +1,4 @@
-# test files
+# test/script output files
 **.json
 **.bin
 **.txt
@@ -7,6 +7,9 @@
 !requirements.txt
 !requirements_player.txt
 
-node_modules
-!package.json
-!package-lock.json
+player/node_modules
+!player/package.json
+!player/package-lock.json
+!player/tsconfig.json
+player/*.js
+player/js

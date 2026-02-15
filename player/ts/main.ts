@@ -1,13 +1,11 @@
 import { net } from 'electron';
 import { app, BrowserWindow, protocol } from 'electron/main';
 import { ChildProcess, spawn } from 'node:child_process';
-import path, { dirname } from 'node:path';
+import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as zmq from "zeromq";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+console.log(__dirname);
 
 const BACKEND_PORT = 0xA91E; // hexspeak approximation of "Apple" which is also a valid port
 
@@ -31,8 +29,6 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 let childProcess: ChildProcess;
-
-console.log(__dirname)
 
 function spawnBackend() {
     childProcess = spawn(
