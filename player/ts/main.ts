@@ -55,7 +55,18 @@ function killBackend() {
     }
 }
 
-app.on('will-quit', killBackend);
+const FILE_PATH_HOSTS = [
+    "trackfile",
+    "artwork"
+];
+
+async function backendRequest(url: string) {
+    const sock = new zmq.Request();
+    sock.connect(`tcp://localhost:${BACKEND_PORT}`);
+    await sock.send(url);
+    const [result] = await sock.receive();
+    return result.toString();
+}
 
 app.whenReady().then(() => {
     spawnBackend();
@@ -63,26 +74,26 @@ app.whenReady().then(() => {
     createWindow();
 
     protocol.handle("app", async (req) => {
-        const { host, pathname } = new URL(req.url);
+        // use host to determine how to interpret the result, but the rest of the URL parsing is done on the Python side
+        const { host } = new URL(req.url);
 
-        if (host === "track") {
-            const sock = new zmq.Request();
+        const response = await backendRequest(req.url);
 
-            sock.connect(`tcp://localhost:${BACKEND_PORT}`)
-
-            await sock.send("4");
-            const [result] = await sock.receive();
-
-            return net.fetch(pathToFileURL(result.toString()).toString());
+        if (response.startsWith("error ")) {
+            return new Response(response.slice("error ".length), {
+                status: 400,
+                headers: { "content-type": "text/html" }
+            });
         }
-        // else if (host === "album") {}
-        // else if (host === "playlist") {}
-        // else if (host === "artwork") {}
 
-        return new Response("unknown host", {
-            status: 400,
-            headers: { 'content-type': 'text/html' }
+        if (FILE_PATH_HOSTS.includes(host)) {
+            return net.fetch(pathToFileURL(response.toString()).toString());
+        } else {
+            return new Response(response, {
+                status: 200,
+                headers: { "content-type": "text" }
         });
+        }
     });
 
     app.on('activate', () => {
