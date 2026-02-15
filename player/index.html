@@ -14,8 +14,42 @@
     <title>Apple Music (open-source player by achen1296)</title>
   </head>
   <body>
-    <audio controls src="app://track"></audio>
-    <p id="test">a</p>
+    <div id="player">
+      <audio controls src="app://trackfile/test.mp3"></audio>
+      <input
+        id="playTime"
+        type="range"
+        min="0"
+        max="1"
+        value="0"
+        step="any"
+        class="slider"
+      />
+      <div id="playTimeText">0:00</div>
+      <button id="skipPrevious">⏮</button>
+      <button id="playPause">⏯</button>
+      <button id="skipNext">⏭</button><input
+        id="volume"
+        type="range"
+        min="0"
+        max="1"
+        value="0"
+        step="any"
+        class="slider"
+      />
+      <div id="volume">100%</div>
+    </div>
+      <input
+        id="playRate"
+        type="range"
+        min="0"
+        max="1"
+        value="0"
+        step="any"
+        class="slider"
+      />
+      <div id="playRateText">1x</div>
+    </div>
   </body>
   <script src="./renderer.js"></script>
 </html>
