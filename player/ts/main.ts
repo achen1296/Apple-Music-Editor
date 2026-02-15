@@ -1,11 +1,9 @@
-import { net } from 'electron';
-import { app, BrowserWindow, protocol } from 'electron/main';
-import { ChildProcess, spawn } from 'node:child_process';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { net } from "electron";
+import { app, BrowserWindow, protocol } from "electron/main";
+import { ChildProcess, spawn } from "node:child_process";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import * as zmq from "zeromq";
-
-console.log(__dirname);
 
 const BACKEND_PORT = 0xA91E; // hexspeak approximation of "Apple" which is also a valid port
 
@@ -55,6 +53,8 @@ function killBackend() {
     }
 }
 
+app.on("will-quit", killBackend);
+
 const FILE_PATH_HOSTS = [
     "trackfile",
     "artwork"
@@ -92,19 +92,19 @@ app.whenReady().then(() => {
             return new Response(response, {
                 status: 200,
                 headers: { "content-type": "text" }
-        });
+            });
         }
     });
 
-    app.on('activate', () => {
+    app.on("activate", () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
         }
     });
 });
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
         app.quit();
     }
 });
