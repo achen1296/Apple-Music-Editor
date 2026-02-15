@@ -30,9 +30,12 @@ protocol.registerSchemesAsPrivileged([
     }
 ]);
 
-let childProcess: ChildProcess;
+let childProcess: ChildProcess | null = null;
 
 function spawnBackend() {
+    if (childProcess) {
+        return
+    }
     childProcess = spawn(
         "python",
         [
@@ -41,13 +44,14 @@ function spawnBackend() {
         ]
     );
     if (!childProcess) {
-        throw Error("couldn't backend spawn child process");
+        throw Error("couldn't spawn backend child process");
     }
 }
 
 function killBackend() {
     if (childProcess) {
         childProcess.kill();
+        childProcess = null;
     }
 }
 
