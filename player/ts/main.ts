@@ -11,11 +11,13 @@ const BACKEND_PORT = 0xA91E; // hexspeak approximation of "Apple" which is also 
 
 const createWindow = () => {
     const win = new BrowserWindow({
-        width: 800,
-        height: 600
+        show: false,
     });
 
-    win.loadFile('index.html');
+    win.maximize();
+    win.show();
+
+    win.loadFile("index.html");
 };
 
 protocol.registerSchemesAsPrivileged([
