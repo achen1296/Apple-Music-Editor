@@ -59,10 +59,10 @@ def main(port: int):
             log_file.write(url)
             log_file.write(b"\n")
 
-            try:
-                response = handle_request(url)
-            except Exception as x:
-                response = "; ".join(x.args).encode()
+        try:
+            response = handle_request(url)
+        except Exception as x:
+            response = f"error {x.__class__.__name__}:\n{"\n".join(x.args)}".encode()
 
         if DEBUG_LOG:
             assert log_file
