@@ -1,5 +1,6 @@
 import sys
 from collections.abc import Callable
+from typing import Final
 from urllib.parse import ParseResultBytes, urlparse
 
 import zmq
@@ -37,15 +38,23 @@ def handle_request(url: bytes) -> bytes:
     return handler(parsed_url)
 
 
+DEBUG_LOG: Final[bool] = False
+
+
 def main(port: int):
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind(f"tcp://*:{port}")
 
-    with open("backend_log.txt", "wb") as log_file:  # for debugging
-        while True:
-            url = socket.recv()
+    log_file = None
+    if DEBUG_LOG:
+        log_file = open("backend_log.txt", "wb")
 
+    while True:
+        url = socket.recv()
+
+        if DEBUG_LOG:
+            assert log_file
             log_file.write(b"recv: ")
             log_file.write(url)
             log_file.write(b"\n")
@@ -55,12 +64,16 @@ def main(port: int):
             except Exception as x:
                 response = "; ".join(x.args).encode()
 
+        if DEBUG_LOG:
+            assert log_file
             log_file.write(b"send: ")
             log_file.write(response)
             log_file.write(b"\n\n")
 
-            socket.send(response)
+        socket.send(response)
 
+        if DEBUG_LOG:
+            assert log_file
             log_file.flush()
 
 
