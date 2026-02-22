@@ -106,8 +106,10 @@ volumeSlider.addEventListener("input", ev => {
 });
 
 playRateSlider.addEventListener("input", ev => {
-    currentAudio.playbackRate = Number(playRateSlider.value);
-    playRateText.innerText = `${playRateSlider.value}x speed`;
+    const playRate = Number(playRateSlider.value);
+    currentAudio.playbackRate = playRate;
+    // number of decimal digits matches slider step 0.1
+    playRateText.innerText = `${playRate.toFixed(1)}x speed`;
 });
 
 switchTrack(trackQueue[0]);
