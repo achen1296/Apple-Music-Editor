@@ -1,0 +1,25 @@
+#player {
+    width: 100%;
+
+    position: fixed;
+    top: 10px;
+
+    display: flex;
+    flex-direction: row;
+}
+
+.topBarButton {
+    flex: 0 0 auto;
+}
+
+#playTimeSlider {
+    flex: 4 0 auto;
+}
+
+#volumeSlider #playRateSlider {
+    flex: 1 0 auto
+}
+
+#songList {
+    margin-top: 40px;
+}

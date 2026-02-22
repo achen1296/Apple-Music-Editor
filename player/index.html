@@ -12,10 +12,14 @@
       content="default-src 'self'; script-src 'self'"
     />
     <title>Apple Music (open-source player by achen1296)</title>
+    <link href="css/player.css" rel="stylesheet" />
   </head>
   <body>
     <div id="player">
       <audio id="currentAudio" preload="auto" autoplay></audio>
+      <button id="skipPreviousButton" class="topBarButton">⏮</button>
+      <button id="playPauseButton" class="topBarButton">⏯</button>
+      <button id="skipNextButton" class="topBarButton">⏭</button>
       <input
         id="playTimeSlider"
         type="range"
@@ -26,9 +30,6 @@
         class="slider"
       />
       <div id="playTimeText">0:00</div>
-      <button id="skipPreviousButton">⏮</button>
-      <button id="playPauseButton">⏯</button>
-      <button id="skipNextButton">⏭</button>
       <input
         id="volumeSlider"
         type="range"
@@ -39,7 +40,6 @@
         class="slider"
       />
       <div id="volumeText">100%</div>
-    </div>
       <input
         id="playRateSlider"
         type="range"
@@ -49,8 +49,9 @@
         step="0.1"
         class="slider"
       />
-      <div id="playRateText">1x speed</div>
+      <div id="playRateText">1.0x speed</div>
     </div>
+    <div id="songList"></div>
   </body>
   <script src="./renderer.js"></script>
 </html>
