@@ -23,7 +23,7 @@ protocol.registerSchemesAsPrivileged([
         scheme: "app",
         privileges: {
             stream: true,
-            bypassCSP: true
+            bypassCSP: true,
         }
     }
 ]);

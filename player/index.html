@@ -15,40 +15,41 @@
   </head>
   <body>
     <div id="player">
-      <audio controls src="app://trackfile/test.mp3"></audio>
+      <audio id="currentAudio" preload="auto" autoplay></audio>
       <input
-        id="playTime"
+        id="playTimeSlider"
         type="range"
-        min="0"
-        max="1"
-        value="0"
+        min="0:00"
+        max="1:00"
+        value="0:00"
         step="any"
         class="slider"
       />
       <div id="playTimeText">0:00</div>
-      <button id="skipPrevious">⏮</button>
-      <button id="playPause">⏯</button>
-      <button id="skipNext">⏭</button><input
-        id="volume"
+      <button id="skipPreviousButton">⏮</button>
+      <button id="playPauseButton">⏯</button>
+      <button id="skipNextButton">⏭</button>
+      <input
+        id="volumeSlider"
         type="range"
         min="0"
-        max="1"
-        value="0"
-        step="any"
+        max="100"
+        value="100"
+        step="1"
         class="slider"
       />
-      <div id="volume">100%</div>
+      <div id="volumeText">100%</div>
     </div>
       <input
-        id="playRate"
+        id="playRateSlider"
         type="range"
         min="0"
-        max="1"
-        value="0"
-        step="any"
+        max="2"
+        value="1"
+        step="0.1"
         class="slider"
       />
-      <div id="playRateText">1x</div>
+      <div id="playRateText">1x speed</div>
     </div>
   </body>
   <script src="./renderer.js"></script>

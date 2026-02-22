@@ -8,8 +8,5 @@
 !requirements_player.txt
 
 player/node_modules
-!player/package.json
-!player/package-lock.json
-!player/tsconfig.json
-player/*.js
-player/js
+!player/**/*.json
+player/**/*.js
