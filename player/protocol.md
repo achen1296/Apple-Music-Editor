@@ -12,19 +12,25 @@ For any kind of error, the return value is "error" followed by a space and then 
 
 Whenever the return value is a file path below, the app:// protocol is set up to load the actual file data for use as a src value for audio/image/etc.
 
-All IDs are in hexadecimal format.
+All IDs are in hexadecimal format (and they are all 8 bytes/16 hexadecimal digits).
 
-### Host: tracklist/albumlist/playlistlist
+### Host: <album/artist/track/playlist>list
 
 No arguments.
 
-Returns: space-separated list of track/album/playlist IDs
+Returns: space-separated list of ALL track/album/playlist IDs
 
-### Host: track/album/playlist
+### Host: <album/artist/track/playlist>meta
 
 Pathname: Track/album/playlist ID
 
-Returns: Track/album/playlist metadata as JSON string
+Returns: Track/album/playlist metadata as JSON string, not including the list of tracks for album/playlist
+
+### Host: <album/playlist>items
+
+Pathname: Album/playlist ID
+
+Returns: space-separated list of track IDs
 
 ### Host: trackfile
 
@@ -34,7 +40,7 @@ Returns: File path
 
 ### Host: artwork
 
-Pathname: artwork ID
+Pathname: Artwork ID
 
 Returns: File path
 
