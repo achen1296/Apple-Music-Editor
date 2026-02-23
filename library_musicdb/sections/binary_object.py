@@ -235,6 +235,13 @@ class BinaryObjectParentSection(Section):
                 return s  # assumes there's only one subsection with the specified subtype
         raise KeyError(self, subtype)
 
+    def data_subsections_of_subtype(self, subtype: str | int):
+        if isinstance(subtype, str):
+            subtype = self.data_subtypes[subtype]
+        for s in self.subsections:
+            if isinstance(s, boma) and s.subtype == subtype:
+                yield s  # assumes there's only one subsection with the specified subtype
+
     def get_sub_string(self, subtype: str | int):
         try:
             subsection = self.data_subsection_of_subtype(subtype)

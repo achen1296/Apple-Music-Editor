@@ -1,9 +1,8 @@
 import re
-from typing import Callable, Iterable, Type
+from collections.abc import Callable, Iterable
 
 from .library import *
-from .sections import Section
-from .sections.binary_object import BinaryObjectParentSection, StringBase
+from .sections import BinaryObjectParentSection, Section, StringBase
 
 
 class LibrarySearcher:
@@ -55,7 +54,7 @@ class LibrarySearcher:
 
     # type and positional
 
-    def of_type[T: Section](self, type: Type[T]):
+    def of_type[T: Section](self, type: type[T]):
         def f(sections: Iterable[Section]) -> Iterable[T]:
             for s in sections:
                 if isinstance(s, type):
@@ -75,7 +74,7 @@ class LibrarySearcher:
 
     children = subsections
 
-    def subsections_of_type[T: Section](self, type: Type[T]):
+    def subsections_of_type[T: Section](self, type: type[T]):
         def f(sections: Iterable[Section]) -> Iterable[T]:
             for s in sections:
                 for sub in s.subsections:
@@ -96,7 +95,7 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def descendants_of_type[T: Section](self, type: Type[T]):
+    def descendants_of_type[T: Section](self, type: type[T]):
         def f(sections: Iterable[Section]) -> Iterable[T]:
             for s in sections:
                 for sub in s:
@@ -118,7 +117,7 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def parents_of_type[T: Section](self, type: Type[T]):
+    def parents_of_type[T: Section](self, type: type[T]):
         def f(sections: Iterable[Section]) -> Iterable[T]:
             seen_parents: set[Section] = set()
 
@@ -147,7 +146,7 @@ class LibrarySearcher:
         self.search_actions.append(f)
         return self
 
-    def ancestors_of_type[T: Section](self, type: Type[T]):
+    def ancestors_of_type[T: Section](self, type: type[T]):
         def f(sections: Iterable[Section]) -> Iterable[T]:
             seen_ancestors: set[Section] = set()
 
@@ -213,11 +212,15 @@ class LibrarySearcher:
 
     # data subsection content
 
-    def data_subsections_of_subtype(self, subtype: str | int):
+    def data_subsections_of_subtype(self, subtype: str | int, *, allow_multiple_per_parent=False):
+        """ Assumes there is only one data subsection of the subtype for each parent, unless `allow_multiple_per_parent` is true (*use this flag for playlist items*). """
         def f(sections: Iterable[Section]) -> Iterable[Section]:
             for s in sections:
                 if isinstance(s, BinaryObjectParentSection):
-                    yield s.data_subsection_of_subtype(subtype)
+                    if allow_multiple_per_parent:
+                        yield from s.data_subsections_of_subtype(subtype)
+                    else:
+                        yield s.data_subsection_of_subtype(subtype)
 
         self.search_actions.append(f)
         return self

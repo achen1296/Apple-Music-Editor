@@ -41,7 +41,7 @@ LibraryMaster = plma
 AlbumList = lama
 Album = iama
 
-AristList = lAma
+ArtistList = lAma
 Artist = iAma
 
 TrackList = ltma

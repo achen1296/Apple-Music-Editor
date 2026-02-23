@@ -3,17 +3,13 @@ import zlib
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import Type, override
+from typing import override
 
 from Crypto.Cipher import AES
 
-from .sections.album import lama
-from .sections.artist import lAma
-from .sections.header import hfma, hsma
-from .sections.library_master import plma
-from .sections.playlist import lPma
-from .sections.section import Section
-from .sections.track import ltma
+from .sections import (Album, AlbumList, Artist, ArtistList, FileHeader, LibraryMaster,
+                       Playlist, PlaylistList, Section, SectionHeader, Track,
+                       TrackList)
 from .util.byte_util import pack_int, unpack_int
 
 KEY = b"BHUILuilfghuila3"
@@ -106,7 +102,7 @@ def save_library_bytes(
             f.write(rest_of_compressed)
 
 
-class Library(hfma):
+class Library(FileHeader):
     """ Represents the entire library as the (outer) hfma header with everything else as subsections.
 
     Subclass of `hfma` to get its class attributes, `__init__` already overrides the behavior to get subsections so no need to add/override the related attributes.
@@ -128,14 +124,14 @@ class Library(hfma):
         # can't use superclass __init__ loop because the outer hfma header doesn't have anything corresponding to total_size or subsection_count, because the total file length is when the file is encrypted + compressed
         while data.tell() < len(library):
             self.subsections.append(
-                hsma(data)
+                SectionHeader(data)
             )
         assert data.tell() == len(library)
 
     def save(self, *args, **kwargs):
         save_library_bytes(b''.join(s.data for s in self), *args, **kwargs)
 
-    def _grandchild_of_type[T: Section](self, type: Type[T]) -> T:
+    def _grandchild_of_type[T: Section](self, type: type[T]) -> T:
         for h in self.subsections:
             if isinstance(h.child, type):
                 return h.child
@@ -143,24 +139,52 @@ class Library(hfma):
 
     @property
     def inner_file_header(self):
-        return self._grandchild_of_type(hfma)
+        return self._grandchild_of_type(FileHeader)
 
     @property
     def library_master(self):
-        return self._grandchild_of_type(plma)
+        return self._grandchild_of_type(LibraryMaster)
 
     @property
     def albums(self):
-        return self._grandchild_of_type(lama)
+        return self._grandchild_of_type(AlbumList)
+
+    def album_by_id(self, id: int) -> Album:
+        for a in self.albums.children:
+            if a.get_int("id_album") == id:
+                assert isinstance(a, Album)
+                return a
+        raise KeyError(id)
 
     @property
     def artists(self):
-        return self._grandchild_of_type(lAma)
+        return self._grandchild_of_type(ArtistList)
+
+    def artist_by_id(self, id: int) -> Artist:
+        for a in self.artists:
+            if a.get_int("id_artist") == id:
+                assert isinstance(a, Artist)
+                return a
+        raise KeyError(id)
 
     @property
     def tracks(self):
-        return self._grandchild_of_type(ltma)
+        return self._grandchild_of_type(TrackList)
+
+    def track_by_id(self, id: int) -> Track:
+        for t in self.tracks.children:
+            if t.get_int("id_track") == id:
+                assert isinstance(t, Track)
+                return t
+        raise KeyError(id)
 
     @property
     def playlists(self):
-        return self._grandchild_of_type(lPma)
+        return self._grandchild_of_type(PlaylistList)
+
+    def playlist_by_id(self, id: int) -> Playlist:
+        for p in self.playlists.children:
+            if p.get_int("id_playlist") == id:
+                assert isinstance(p, Playlist)
+                return p
+        raise KeyError(id)
