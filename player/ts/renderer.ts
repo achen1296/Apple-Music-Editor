@@ -1,5 +1,7 @@
 "use strict";
 
+declare function backendRequest(url: string): Promise<string>;
+
 const trackQueue = ["test.mp3", "test2.mp3"];
 let trackIndex = 0;
 

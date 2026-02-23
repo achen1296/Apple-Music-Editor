@@ -1,4 +1,6 @@
-import { net } from "electron";
+"use strict";
+
+import { ipcMain, net } from "electron";
 import { app, BrowserWindow, protocol } from "electron/main";
 import { ChildProcess, spawn } from "node:child_process";
 import path from "node:path";
@@ -10,6 +12,9 @@ const BACKEND_PORT = 0xA91E; // hexspeak approximation of "Apple" which is also 
 const createWindow = () => {
     const win = new BrowserWindow({
         show: false,
+        webPreferences: {
+            preload: path.join(__dirname, "preload.js")
+        }
     });
 
     win.maximize();
@@ -65,11 +70,18 @@ async function backendRequest(url: string) {
     sock.connect(`tcp://localhost:${BACKEND_PORT}`);
     await sock.send(url);
     const [result] = await sock.receive();
-    return result.toString();
+    const resultString = result.toString();
+    if (resultString.startsWith("error ")) {
+        // print Python backend errors to the main console
+        console.error(resultString.slice("error ".length));
+    }
+    return resultString;
 }
 
 app.whenReady().then(() => {
     spawnBackend();
+
+    ipcMain.handle("backendRequest", (ev, url: string) => backendRequest(url));
 
     createWindow();
 
