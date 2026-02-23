@@ -2,10 +2,9 @@
 
 declare function backendRequest(url: string): Promise<string>;
 
-const trackQueue = ["test.mp3", "test2.mp3"];
-let trackIndex = 0;
+// player
 
-const player = document.getElementById("player") as HTMLDivElement;
+const playerDiv = document.getElementById("div#player") as HTMLDivElement;
 
 const currentAudio = document.getElementById("currentAudio") as HTMLAudioElement;
 
@@ -23,9 +22,20 @@ const playRateSlider = document.getElementById("playRateSlider") as HTMLInputEle
 const playRateText = document.getElementById("playRateText") as HTMLDivElement;
 
 function switchTrack(track: string) {
-    // todo: right now, the path of the file, but should be changed to Apple Music track ID
+    if (!track) {
+        return; // e.g. undefined for empty track queue, silently ignore
+    }
     currentAudio.src = `app://trackfile/${track}`;
     currentAudio.playbackRate = Number(playRateSlider.value); // this isn't remembered automatically (unlike volume)
+}
+
+let trackQueue: string[] = [];
+let trackIndex = 0;
+
+function switchTrackQueue(newTrackQueue: string[]) {
+    trackQueue = newTrackQueue.filter(i => i); // remove empty strings from splitting e.g. "".split(" ") -> [""]
+    trackIndex = 0;
+    switchTrack(trackQueue[0]);
 }
 
 function previousTrack() {
@@ -114,4 +124,52 @@ playRateSlider.addEventListener("input", ev => {
     playRateText.innerText = `${playRate.toFixed(1)}x speed`;
 });
 
-switchTrack(trackQueue[0]);
+// album and playlist lists
+
+const albumsDiv = document.querySelector("div#albums") as HTMLDivElement;
+const albumList = document.querySelector("#albumList") as HTMLUListElement;
+
+const playlistsDiv = document.querySelector("div#playlists") as HTMLDivElement;
+const playlistList = document.querySelector("#playlistList") as HTMLUListElement;
+
+
+async function loadAlbumList() {
+    const albumIDs = await backendRequest("app://albumlist");
+    if (albumList.firstElementChild) {
+        // remove "Loading..."
+        albumList.removeChild(albumList.firstElementChild);
+    }
+    for (const albumID of albumIDs.split(" ")) {
+        const a = albumList
+            .appendChild(document.createElement("li"))
+            .appendChild(document.createElement("a"));
+        const albumMeta = JSON.parse(await backendRequest(`app://albummeta/${albumID}`));
+        const { name, artist } = albumMeta;
+        a.innerText = `${name}${artist ? ` by ${artist}` : ""}`;
+        a.addEventListener("click", async ev => {
+            switchTrackQueue((await backendRequest(`app://albumitems/${albumID}`)).split(" "));
+        });
+    }
+}
+
+loadAlbumList();
+
+async function loadPlaylistList() {
+    const playlistIDs = await backendRequest("app://playlistlist");
+    if (playlistList.firstElementChild) {
+        // remove "Loading..."
+        playlistList.removeChild(playlistList.firstElementChild);
+    }
+    for (const playlistID of playlistIDs.split(" ")) {
+        const a = playlistList
+            .appendChild(document.createElement("li"))
+            .appendChild(document.createElement("a"));
+        const playlistMeta = JSON.parse(await backendRequest(`app://playlistmeta/${playlistID}`));
+        a.innerText = playlistMeta["name"];
+        a.addEventListener("click", async ev => {
+            switchTrackQueue((await backendRequest(`app://playlistitems/${playlistID}`)).split(" "));
+        });
+    }
+}
+
+loadPlaylistList();
