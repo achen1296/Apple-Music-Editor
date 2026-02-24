@@ -1,0 +1,79 @@
+#player {
+    width: 100%;
+
+    position: fixed;
+    top: 0px;
+    left: 0px;
+
+    padding-top: 10px;
+
+    display: grid;
+    grid-template-columns:
+        /* buttons */
+        auto
+        /* play time */
+        4fr
+        /* volume */
+        1fr
+        /* play rate */
+        1fr;
+}
+
+#currentTrackText {
+    grid-column: 1/5;
+
+    display: grid;
+}
+
+#currentTrackText>span {
+    text-align: center;
+}
+
+#currentTrackNameText {
+    grid-row: 1;
+}
+
+#currentTrackArtistText {
+    grid-row: 2;
+}
+
+#currentTrackAlbumText {
+    grid-row: 3;
+}
+
+#playerButtons,
+#playTime,
+#volume,
+#playRate {
+    grid-row: 2;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+#playerButtons {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+#playTime,
+#volume,
+#playRate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.slider {
+    flex: 1 0 auto;
+    width: 100%;
+}
+
+.sliderText {
+    flex: 0 0 auto;
+    width: 100%;
+    text-align: center;
+}
+
+#albums {
+    margin-top: 120px;
+}

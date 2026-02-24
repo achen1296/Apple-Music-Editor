@@ -4,29 +4,41 @@ declare function backendRequest(url: string): Promise<string>;
 
 // player
 
-const playerDiv = document.getElementById("div#player") as HTMLDivElement;
+const playerDiv = document.getElementById("player") as HTMLDivElement;
+
+const currentTrackNameText = document.getElementById("currentTrackNameText") as HTMLSpanElement;
+const currentTrackArtistText = document.getElementById("currentTrackArtistText") as HTMLSpanElement;
+const currentTrackAlbumText = document.getElementById("currentTrackAlbumText") as HTMLSpanElement;
 
 const currentAudio = document.getElementById("currentAudio") as HTMLAudioElement;
 
 const playTimeSlider = document.getElementById("playTimeSlider") as HTMLInputElement;
-const playTimeText = document.getElementById("playTimeText") as HTMLDivElement;
+const playTimeText = document.getElementById("playTimeText") as HTMLSpanElement;
 
 const skipPreviousButton = document.getElementById("skipPreviousButton") as HTMLButtonElement;
 const playPauseButton = document.getElementById("playPauseButton") as HTMLButtonElement;
 const skipNextButton = document.getElementById("skipNextButton") as HTMLButtonElement;
 
 const volumeSlider = document.getElementById("volumeSlider") as HTMLInputElement;
-const volumeText = document.getElementById("volumeText") as HTMLDivElement;
+const volumeText = document.getElementById("volumeText") as HTMLSpanElement;
 
 const playRateSlider = document.getElementById("playRateSlider") as HTMLInputElement;
-const playRateText = document.getElementById("playRateText") as HTMLDivElement;
+const playRateText = document.getElementById("playRateText") as HTMLSpanElement;
 
-function switchTrack(track: string) {
-    if (!track) {
+async function switchTrack(trackID: string) {
+    if (!trackID) {
         return; // e.g. undefined for empty track queue, silently ignore
     }
-    currentAudio.src = `app://trackfile/${track}`;
+    currentAudio.src = `app://trackfile/${trackID}`;
+
     currentAudio.playbackRate = Number(playRateSlider.value); // this isn't remembered automatically (unlike volume)
+
+    const trackMeta = JSON.parse(await backendRequest(`app://trackmeta/${trackID}`));
+    const { name, album, artist } = trackMeta;
+
+    currentTrackNameText.innerText = name;
+    currentTrackArtistText.innerText = artist || "(no artist)";
+    currentTrackAlbumText.innerText = album || "(no album)";
 }
 
 let trackQueue: string[] = [];
@@ -114,7 +126,7 @@ playPauseButton.addEventListener("click", ev => {
 
 volumeSlider.addEventListener("input", ev => {
     currentAudio.volume = Number(volumeSlider.value) / 100;
-    volumeText.innerText = `${volumeSlider.value}%`;
+    volumeText.innerText = `${volumeSlider.value}% volume`;
 });
 
 playRateSlider.addEventListener("input", ev => {
@@ -126,11 +138,11 @@ playRateSlider.addEventListener("input", ev => {
 
 // album and playlist lists
 
-const albumsDiv = document.querySelector("div#albums") as HTMLDivElement;
-const albumList = document.querySelector("#albumList") as HTMLUListElement;
+const albumsDiv = document.getElementById("albums") as HTMLDivElement;
+const albumList = document.getElementById("albumList") as HTMLUListElement;
 
-const playlistsDiv = document.querySelector("div#playlists") as HTMLDivElement;
-const playlistList = document.querySelector("#playlistList") as HTMLUListElement;
+const playlistsDiv = document.getElementById("playlists") as HTMLDivElement;
+const playlistList = document.getElementById("playlistList") as HTMLUListElement;
 
 
 async function loadAlbumList() {
