@@ -66,16 +66,25 @@ const SECONDS_FORMAT = Intl.NumberFormat(undefined, {
     minimumIntegerDigits: 2
 });
 
-function setPlayTimeText(totalSeconds: number) {
-    let seconds = totalSeconds % 60;
-    const minutes = (totalSeconds - seconds) / 60;
-    seconds = Math.floor(seconds);
-    playTimeText.innerText = `${minutes}:${SECONDS_FORMAT.format(seconds)}`;
+function setPlayTimeText(currentTime: number, duration: number) {
+    if (isNaN(duration)) {
+        // without this briefly shows NaN / NaN every time the audio switches
+        return;
+    }
+
+    let currentSeconds = currentTime % 60;
+    const currentMinutes = (currentTime - currentSeconds) / 60;
+    currentSeconds = Math.floor(currentSeconds);
+
+    let durationSeconds = duration % 60;
+    const durationMinutes = (duration - durationSeconds) / 60;
+    durationSeconds = Math.floor(durationSeconds);
+
+    playTimeText.innerText = `${currentMinutes}:${SECONDS_FORMAT.format(currentSeconds)} / ${durationMinutes}:${SECONDS_FORMAT.format(durationSeconds)}`;
 }
 
 currentAudio.addEventListener("timeupdate", ev => {
-    const newLocal = currentAudio.currentTime;
-    setPlayTimeText(newLocal);
+    setPlayTimeText(currentAudio.currentTime, currentAudio.duration);
     playTimeSlider.value = `${currentAudio.currentTime}`;
 });
 
@@ -89,7 +98,7 @@ playTimeSlider.addEventListener("input", ev => {
         inputtingOnPlayTimeSlider = true;
     }
     currentAudio.pause(); // halt playback while seeking, and so the audio playback doesn't compete to set the play time text
-    setPlayTimeText(Number(playTimeSlider.value));
+    setPlayTimeText(Number(playTimeSlider.value), currentAudio.duration);
 });
 
 playTimeSlider.addEventListener("change", ev => {
