@@ -2,3 +2,10 @@
     background-color: black;
     color: white;
 }
+
+#player,
+#rightSidebar {
+    border-style: solid;
+    border-color: gray;
+    border-width: 2px;
+}

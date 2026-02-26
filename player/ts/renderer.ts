@@ -25,6 +25,9 @@ const volumeText = document.getElementById("volumeText") as HTMLSpanElement;
 const playRateSlider = document.getElementById("playRateSlider") as HTMLInputElement;
 const playRateText = document.getElementById("playRateText") as HTMLSpanElement;
 
+const trackHistoryList = document.getElementById("trackHistory") as HTMLUListElement;
+const trackQueueList = document.getElementById("trackQueue") as HTMLUListElement;
+
 async function switchTrack(trackID: string) {
     if (!trackID) {
         return; // e.g. undefined for empty track queue, silently ignore
