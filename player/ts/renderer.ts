@@ -18,6 +18,8 @@ const playTimeText = document.getElementById("playTimeText") as HTMLSpanElement;
 const skipPreviousButton = document.getElementById("skipPreviousButton") as HTMLButtonElement;
 const playPauseButton = document.getElementById("playPauseButton") as HTMLButtonElement;
 const skipNextButton = document.getElementById("skipNextButton") as HTMLButtonElement;
+const repeatButton = document.getElementById("repeatButton") as HTMLButtonElement;
+const shuffleButton = document.getElementById("shuffleButton") as HTMLButtonElement;
 
 const volumeSlider = document.getElementById("volumeSlider") as HTMLInputElement;
 const volumeText = document.getElementById("volumeText") as HTMLSpanElement;
@@ -44,6 +46,50 @@ async function switchTrack(trackID: string) {
     currentTrackAlbumText.innerText = album || "(no album)";
 }
 
+enum RepeatSetting {
+    NONE,
+    ALL,
+    ONE,
+};
+let repeat = RepeatSetting.NONE;
+repeatButton.addEventListener("click", ev => {
+    switch (repeat) {
+        case RepeatSetting.NONE:
+            repeat = RepeatSetting.ALL;
+            repeatButton.classList.add("topBarButtonActive");
+            break;
+        case RepeatSetting.ALL:
+            repeat = RepeatSetting.ONE;
+            repeatButton.innerText = "🔂";
+            break;
+        case RepeatSetting.ONE:
+            repeat = RepeatSetting.NONE;
+            repeatButton.innerText = "🔁";
+            repeatButton.classList.remove("topBarButtonActive");
+            break;
+    }
+});
+
+let shuffle = false;
+shuffleButton.addEventListener("click", ev => {
+    if (shuffle) {
+        shuffle = false;
+        shuffleButton.classList.remove("topBarButtonActive");
+    } else {
+        shuffle = true;
+        shuffleButton.classList.add("topBarButtonActive");
+    }
+});
+
+/** Maximum length of trackHistory to keep */
+const MAX_HISTORY = 50;
+/** Maximum length of trackQueue to SHOW in the UI, but the rest is still kept internally */
+const MAX_SHOWN_QUEUE = 50;
+/**
+ * Before trackIndex: history
+ * At trackIndex: now playing
+ * After trackIndex: up next
+*/
 let trackQueue: string[] = [];
 let trackIndex = 0;
 
