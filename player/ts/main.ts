@@ -75,6 +75,7 @@ async function backendRequest(url: string) {
         // print Python backend errors to the main console
         console.error(resultString.slice("error ".length));
     }
+    sock.close();
     return resultString;
 }
 
