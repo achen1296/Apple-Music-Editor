@@ -4,7 +4,17 @@ This is a Python interface for Apple Music's Library.musicdb file, which can be 
 
 While making this, I also took my turn at learning more about the file format. Jump to the [Table of Contents](#table-of-contents) below for what I believe is the most complete public Library.musicdb description! It includes all of previously known information along with my own discoveries and commentary.
 
-# Using This Code
+# Using This Code/Who is This For?
+
+To clarify, this is nothing to do with the online service called "Apple Music", or the library attached to your iCloud account therein. (To interact with that, use the official [web API](https://developer.apple.com/documentation/applemusicapi).)
+
+It is for the _local_ music library, a file containing only metadata about albums, playlists, paths to _local_ files (which contain the actual audio data), etc., which does not require you to be logged in and is entirely offline, as created and used by the official [Apple Music player application](https://apps.microsoft.com/detail/9pfhdd62mxs1) (link is to Windows Store). It _may_ be correlated with your online library (personally I have never paid for the online service so I have no idea if that's how it works), but it certainly doesn't have to be.
+
+I created this because, yes, I have an iPhone, so using the official Apple applications is the best way to synchronize my music between my (Windows) PC and that iPhone.
+
+However, I was unsatisfied with certain bugs (for example, if a track entry somehow ends up pointing at the wrong file path, which is not unlikely for thousands of them, you will never know about it unless you specifically try playing that track — otherwise it is just silently skipped when playing from an album/playlist) and a UI that doesn't go far enough in allowing me to organize and manage my library in the complicated ways that I want (for example, it takes many clicks/GUI navigation steps to add a song to a playlist, let alone 10, let alone doing so automatically e.g. using a regular expression pattern).
+
+(To be added) Another use case is to help other people (if not myself) escape the Apple walled garden by reintroducing the ability to create an XML file of the library, which was curiously omitted in the transition from [iTunes](https://apps.microsoft.com/detail/9pb2mz1zmb1s) to [Apple Music]((https://apps.microsoft.com/detail/9pfhdd62mxs1). As I understand it, this was commonly used by third-party applications to read iTunes libraries, including to migrate out.
 
 Considering the functionality already covered by the official program, in my opinion this code is most useful for:
 
@@ -20,9 +30,9 @@ Here are some examples:
   - possibly with multiple repeats of the same song (something that smart playlists don't do) to increase the probability of it being selected when shuffling
 - detect where the file path has become incorrect (this often happened to me when editing my library — I discovered that several hundred tracks had become disconnected from their files, and the official program just silently skips over them without saying anything about it) and potentially automatically repair it
 
-I considered making a nice frontend program, but ultimately decided against it. I imagine that if one wants to do something the official program GUI cannot, then it is also likely the case that they would want to do something different from myself, and would have the necessary computer science knowledge to use this code directly. So instead, I've provided the above examples as Python scripts, and hopefully adequate documentation inside the code comments. (To look up the exact names I used for things, look at the `dict` constants under each class.)
+I considered making a nice frontend editor program, but ultimately decided against it. I imagine that if, like myself, one wants to do something the official program GUI cannot, then it is also likely the case that they would want to do something different from myself, and would have the necessary computer science knowledge to use this code directly. So instead, I've provided the above examples as Python scripts, and hopefully adequate documentation inside the code comments. (To look up the exact names I used for things, look at the `dict` constants under each class.)
 
-_Note that this code does not support the book subtype of boma sections, because, as mentioned below, my library doesn't have any I could test with, which makes me suspect they are no longer in use anyway._
+_Note that this code does not support the "book" subtype of boma sections, because, as mentioned below, my library doesn't have any I could test with, which makes me suspect they are no longer in use anyway._
 
 _In general, I just know it works on my own library file with the types of edits I wanted to do, so I can't give any guarantees about what it does to your library file. For this reason I've made it automatically make backups when you use the program to edit your library, unless you specifically turn them off. They will be called e.g. "Library backup 2026-01-01T00.00.00.musicdb" (if you saved the edited version at midnight of January 1, 2026) and placed in the same folder as Library.musicdb._
 
@@ -160,7 +170,6 @@ How can we successfully edit the file when large parts of the file format remain
 - Firstly, I have discovered a lot more about the format.
 - Secondly, making simple edits can be done easily enough by preserving all of the unknown data as-is (this is the major difference with previous projects, which did not preserve every byte in converting to another format).
 - Finally, and perhaps most importantly, it turns out that official Apple Music program is actually quite lenient. Actually, because of this, in my opinion Gary Vollink was being overly pessimistic when he said "this information will NOT be enough to create or even manipulate a musicdb externally" — most manipulations I can think of could have been done without any of my new discoveries. As long as the metadata about the [section structure](#section-structure) is correct, it can handle plenty of cases where parts of the data are uninitialized (it will set correct values itself, and maybe it doesn't even read them at all in some cases), for example:
-
   - the song, playlist, album, and artist counts in [hfma](#hfma-file-header) do not need to be set
   - likewise the track count of a [playlist](#lpma-playlist) does not need to be set
   - randomized ID numbers do not need to be initialized (although if its an ID number referring to something else, e.g. [playlist item](#ipfa-playlist-item) referring to a [track](#itma-track) by its ID, that obviously _does_ have to be initialized correctly)
