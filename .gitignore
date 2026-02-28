@@ -6,7 +6,3 @@
 .venv
 !requirements.txt
 !requirements_player.txt
-
-player/node_modules
-!player/**/*.json
-player/**/*.js
