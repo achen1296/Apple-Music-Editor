@@ -188,3 +188,14 @@ class Library(FileHeader):
                 assert isinstance(p, Playlist)
                 return p
         raise KeyError(id)
+
+
+if __name__ == "__main__":
+    import sys
+    file = Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_LIBRARY_FILE)
+    save_library_bytes(
+        load_library_bytes(file),
+        "library.bin",
+        make_backup=False,  # not saving to the same location
+        raw=True
+    )
