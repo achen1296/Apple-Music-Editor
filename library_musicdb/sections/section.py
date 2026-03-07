@@ -131,7 +131,7 @@ class Section:
                 total_size = self.total_size_from_data + self.total_size_start
                 while data.tell() < start_offset + total_size:
                     append_subsection()
-                assert data.tell() == start_offset + total_size
+                assert data.tell() == start_offset + total_size, (data.tell(), start_offset + total_size)
             elif "subsection_count" in self.offsets:
                 for _ in range(0, self.subsection_count_from_data):
                     append_subsection()
