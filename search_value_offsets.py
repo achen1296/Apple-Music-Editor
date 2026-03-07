@@ -1,7 +1,6 @@
 """ This script is used to search for the offsets (relative to the beginning of the sections in which they appear) where different byte values occur. This is useful to find out where values (e.g. an ID) are repeated. """
 
 from library_musicdb import *
-from library_search import LibrarySearcher
 
 if __name__ == "__main__":
     search_for = (

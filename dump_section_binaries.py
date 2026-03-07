@@ -1,9 +1,9 @@
 """ This script is used to dump the raw binary contents of different sections to the "section_binaries" directory to inspect them. """
 
+from pathlib import Path
 import re
 
 from library_musicdb import *
-from library_search import LibrarySearcher
 
 if __name__ == "__main__":
     write_subsections = True
@@ -31,7 +31,7 @@ if __name__ == "__main__":
             subtype = ""
 
         name_data = ""
-        if isinstance(s, DataContainerSection):
+        if isinstance(s, BinaryObjectParentSection):
             try:
                 name_data = f" {s.get_sub_string("name")}"
             except KeyError:
