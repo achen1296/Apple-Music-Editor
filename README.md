@@ -989,14 +989,25 @@ Parents: [boma](#boma-binary-object) (subtype 0x17)
 
 Seems completely understood: X
 
-The length is always 52? (I don't have any of these in my library to check, but Gary Vollink's table ends at offset 48 (remember to subtract 20) with size 4 without a "..." after.)
+The length is always 84.
 
-| Offset | Length | Meaning               | Examples Value(s) |
-| ------ | ------ | --------------------- | ----------------- |
-| 0      | 4      | Vertical resolution   | 480               |
-| 4      | 4      | Horizontal resolution | 640               |
+| Offset | Length | Meaning                                                                 | Examples Value(s) |
+| ------ | ------ | ----------------------------------------------------------------------- | ----------------- |
+| 0      | 4      | Vertical resolution                                                     | 480               |
+| 4      | 4      | Horizontal resolution                                                   | 640               |
+| 8      | 4?     | ?                                                                       | 1                 |
+| 12     | 4?     | ?                                                                       | 0x 31 63 76 61    |
 | ...    |
-| 48     | 4      | Framerate?            | 24                |
+| 20     | 4?     | ?                                                                       | 0x 9F 16 00 00    |
+| 24     | 4?     | ? (same as 20)                                                          |
+| ...    |
+| 32     | 4?     | ?                                                                       | 100               |
+| 36     | 4?     | ?                                                                       | 41                |
+| 40     | 4?     | ? (signed int?)                                                         | -1                |
+| 44     | 4?     | ?                                                                       | 30416             |
+| 48     | 4      | ? (not the framerate as guessed by others — still 24 on a 30 fps video) | 24                |
+| 52     | 4      | ?                                                                       | 30,000            |
+| ...    |
 
 Grandparents: [itma](#itma-track)
 
@@ -1122,7 +1133,7 @@ Seems completely understood: X
 
 "Apple ? playlist item"?
 
-One [lpma](#lpma-playlist) can have many ipfa grandchilldren. This is the only (known) [boma](#boma-binary-object) subtype where this is possible.
+One [lpma](#lpma-playlist) can have many ipfa grandchildren. This is the only (known) [boma](#boma-binary-object) subtype where this is possible.
 
 Another way this kind of section is unique is that the order they are saved in actually matters: it determines the playlist order of the songs.
 

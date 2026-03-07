@@ -61,7 +61,7 @@ class TrackPlaysSkips(Section):
 
 
 class Video(Section):
-    fixed_size = 52  # not sure this is right, see readme
+    fixed_size = 84
     offsets = {
         # no **Section.offsets: does not have a typical size offset
         "height": 0,
@@ -69,7 +69,7 @@ class Video(Section):
         "framerate": 48,
     }
     default_values = {
-        "size": 52  # not sure this is right, see readme
+        "size": 84
     }
 
 
