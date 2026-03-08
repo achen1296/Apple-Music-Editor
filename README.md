@@ -839,7 +839,7 @@ Grandchildren:
   - 0x6 = kind - e.g. "MPEG audio file"
   - 0x7 = equalizer - always a UTF-16 string that looks like "#!#\<number\>#!#" where the number is different for each equalizer option, strange that this is not a single-byte enum
   - 0x8 = comments
-  - 0xB = URL - only present for downloaded tracks, URL-encoded version of the file path "file:///C:/Users..." (UTF-8)
+  - 0xB = URL - only present for downloaded tracks, URL-encoded version of the file path "file:///C:/Users..." (UTF-8). *This is the one that Apple Music seems to use, not 0x43.*
   - 0xC = composer
   - 0xE = grouping
   - 0x12 = episode description
@@ -862,7 +862,7 @@ Grandchildren:
   - 0x3C = purchaser name - only present for downloaded tracks
   - 0x3F = work name
   - 0x40 = movement name
-  - 0x43 = file path - only present for downloaded tracks
+  - 0x43 = file path - only present for downloaded tracks. *Note that this seems to be inherited from iTunes but not used by Apple Music. Instead, see 0xB.*
   - 0x12F = series title
 - [Raw Strings](#raw-string)
   - 0x36 = artwork plist (XML) (UTF-8)
@@ -1571,6 +1571,14 @@ table|cache_items|cache_items|6|CREATE TABLE cache_items (artwork_id TEXT NOT NU
 index|sqlite_autoindex_cache_items_1|cache_items|7|
 table|item_to_artwork|item_to_artwork|8|CREATE TABLE item_to_artwork (item_id INTEGER NOT NULL, source_kind INTEGER NOT NULL, remote_id INTEGER DEFAULT 0, artwork_id TEXT NOT NULL, PRIMARY KEY (item_id))
 ```
+
+To retrieve the locally cached image file for a particular item (album, artist, playlist, or track):
+
+- read the item's ID from the library as a 64-bit little-endian signed integer, e.g. 0xF25C554BE0990480 → -9222076948332323598
+- use that as the key for the `item_to_artwork` table: `select artwork_id from item_to_artwork where item_id = ...`
+- use that as the key for the `cache_items` table: `select size_kind, extension from cache_items where artwork_id = ...`
+- assemble the `artwork_id`, `size_kind`, and `extension` into a file name: `\<artwork_id\>_sk\<size_kind\>.\<extension\>`, e.g. `A6881B24-F34E-4AA6-98CB-28DC4A5459E2_sk1.jpeg`
+- as mentioned above, the file is located in the "artwork" folder accompanying the library file
 
 For [iAma](#iama-artist) offset 64, seems to be non-zero only when `location_type = 2` in the `artwork_source` table. The `location` is usually a URL such as "https://is1-ssl.mzstatic.com/image/thumb/Music\<number\>/v4/\<several path components with a UUID\>/\<some image name\>".
 
