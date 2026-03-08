@@ -116,7 +116,10 @@ class Library(FileHeader):
     @override
     def __init__(self, library: bytes | bytearray | Path | str = DEFAULT_LIBRARY_FILE):
         if isinstance(library, Path) or isinstance(library, str):
+            self.file = Path(library)
             library = load_library_bytes(library)
+        else:
+            self.file = None
 
         data = BytesIO(library)
         super().__init__(data)
