@@ -259,7 +259,12 @@ class Section:
     def as_dict(self) -> dict:
         """ Summary dict of known data in this section (not any subsections). """
         return {
-            offset_name: self.get_int(offset_name)
+            offset_name: (
+                self.get_date(offset_name)
+                if "date" in offset_name
+                # not bothering to do the same for booleans because they aren't named as consistently, and it is really easy for the user to interpret ints as booleans anyway
+                else self.get_int(offset_name)
+            )
             for offset_name in self.offsets
             if offset_name not in self.offset_aliases
         }
