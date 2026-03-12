@@ -1,11 +1,12 @@
 from collections import defaultdict
+from datetime import datetime
 from enum import IntEnum
 from io import BytesIO
 from typing import Iterator, Type
 
 from ..util.byte_util import (pack_int_into, pack_int_into_be, unpack_int,
                               unpack_int_be)
-from ..util.date_util import datetime_to_int
+from ..util.date_util import datetime_to_int, int_to_datetime
 
 
 class Section:
@@ -352,6 +353,22 @@ class Section:
         else:
             offset = key
         return bool(self.get_int((offset, 1)))
+
+    def set_date(self, key: str | int, value: datetime):
+        if isinstance(key, str):
+            offset = self.offsets[key]
+            assert self.offset_int_sizes[key] == 4, "size should be 4 for a date!"
+        else:
+            offset = key
+        self.set_int((offset, 4), datetime_to_int(value))
+
+    def get_date(self, key: str | int):
+        if isinstance(key, str):
+            offset = self.offsets[key]
+            assert self.offset_int_sizes[key] == 4, "size should be 4 for a date!"
+        else:
+            offset = key
+        return int_to_datetime(self.get_int((offset, 4)))
 
     def update(self, d: dict[str | int | tuple[int, int], bytes | int | bool]):
         """ Update multiple offsets, automatically using the correct method depending on the data type of the values. (Make sure the key type matches the method signatures too!) """
