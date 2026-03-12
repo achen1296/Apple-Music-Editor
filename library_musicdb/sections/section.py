@@ -256,12 +256,12 @@ class Section:
 
     add_child = add_subsection
 
-    def as_dict(self) -> dict:
+    def as_dict(self, *, interpret_dates=False) -> dict:
         """ Summary dict of known data in this section (not any subsections). """
         return {
             offset_name: (
                 self.get_date(offset_name)
-                if "date" in offset_name
+                if interpret_dates and "date" in offset_name
                 # not bothering to do the same for booleans because they aren't named as consistently, and it is really easy for the user to interpret ints as booleans anyway
                 else self.get_int(offset_name)
             )

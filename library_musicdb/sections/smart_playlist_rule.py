@@ -269,7 +269,7 @@ class SmartPlaylistRuleArguments(BigEndianSection):
     arguments_in_use: list[str] = []  # will be reassigned by parent
 
     @override
-    def as_dict(self) -> dict:
+    def as_dict(self, *, interpret_dates=False) -> dict:
         return {
             offset_name: self.get_int(offset_name)
             for offset_name in self.arguments_in_use

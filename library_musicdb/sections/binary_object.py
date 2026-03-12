@@ -278,8 +278,8 @@ class BinaryObjectParentSection(Section):
         subsection.child.set_int(key, value)
 
     @override
-    def as_dict(self):
-        d = super().as_dict()
+    def as_dict(self, *, interpret_dates=False):
+        d = super().as_dict(interpret_dates=interpret_dates)
         for subtype_name in self.data_subtypes:
             if subtype_name in self.data_subtype_aliases:
                 continue
@@ -291,7 +291,7 @@ class BinaryObjectParentSection(Section):
                 if isinstance(subsection.child, StringBase):
                     d[subtype_name] = subsection.child.get_string()
                 else:
-                    d[subtype_name] = subsection.child.as_dict()
+                    d[subtype_name] = subsection.child.as_dict(interpret_dates=interpret_dates)
         return d
 
 # don't know where these boma subtypes go because they aren't in my library
