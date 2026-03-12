@@ -47,9 +47,13 @@ class iAma(BinaryObjectParentSection):
     }
 
     data_subtypes = {
-        "artist": 0x190,
+        "name": 0x190,
+        "artist": 0x190,  # alias
         "sort_artist": 0x191,
         "plist_artwork_url": 0x192,
+    }
+    data_subtype_aliases = {
+        "artist",
     }
 
     @override
