@@ -81,7 +81,7 @@ def save_library_bytes(
         header = raw_bytes[:header_size]
         rest = raw_bytes[header_size:]
 
-        compressed = zlib.compress(rest, 1)  # experimentally, this is the compression level that Apple Music
+        compressed = zlib.compress(rest, 1)  # experimentally, this is the compression level that Apple Music uses
         compressed_size = len(compressed)
 
         max_encrypted_size = unpack_int(raw_bytes, 84)

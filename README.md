@@ -217,7 +217,7 @@ For some fields I provide alias names where either can be used, e.g. "name" and 
 
 [Back to TOC](#table-of-contents)
 
-Dates are almost always stored using the local time on the computer. [hfma](#hfma-file-header) contains a time zone offset that can be used to convert to another time zone. (What happens if the computer's time zone is changed?)
+Dates are stored using timestamps in UTC time zones. [hfma](#hfma-file-header) contains a time zone offset that is used to convert to the displayed time zone. (What happens if the computer's time zone is changed?)
 
 # Encryption and Compression
 
