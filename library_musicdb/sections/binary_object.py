@@ -193,39 +193,72 @@ class BinaryObjectParentSection(Section):
         return super().from_scratch(initial_values, initial_children)  # type: ignore
 
     @override
-    def update(  # type: ignore intentionally allowing dict value for boma children and str values for the grandchildren
+    def update(  # type: ignore intentionally allowing dict values for the grandchildren
         self,
         d: dict[
             str | int | tuple[int, int],
 
-            bytes | int | bool |
+            bytes | int | bool | str |
             dict[
                 str | int | tuple[int, int],
                 bytes | int | bool | str
             ]
         ]
     ):
+        def child_and_grandchild_from_scratch(
+            k: str,
+            v: bytes | int | bool | str |
+            dict[
+                str | int | tuple[int, int],
+                bytes | int | bool | str
+            ]
+        ):
+            child_class = self.subsection_class
+            assert child_class
+
+            grandchild_class = child_class.subsection_class or child_class.subsection_class_by_subtype[self.data_subtypes[k]]
+
+            self.add_child(
+                child_class.from_scratch(
+                    {
+                        "subtype": self.data_subtypes[k]
+                    },
+                    [
+                        grandchild_class.from_scratch(v)  # type: ignore
+                    ]
+                )
+            )
+
         for k, v in d.items():
+            if isinstance(v, str):
+                if not isinstance(k, str):
+                    raise TypeError(f"key for str value {v} must be str, not {k}")
+
+                try:
+                    child = self.data_subsection_of_subtype(k)
+                except KeyError:
+                    child_and_grandchild_from_scratch(k, v)
+                else:
+                    assert isinstance(child, StringBase)
+                    child.set_string(v)
+
             if isinstance(v, dict):
                 if not isinstance(k, str):
                     raise TypeError(f"key for dict value {v} must be str, not {k}")
-                assert self.subsection_class
-                self.add_child(
-                    self.subsection_class.from_scratch(
-                        {  # type: ignore str grandchildren
-                            **v,
-                            "subtype": self.data_subtypes[k]
-                        }
-                    )
-                )
 
-        d = {
+                try:
+                    child = self.data_subsection_of_subtype(k)
+                except KeyError:
+                    child_and_grandchild_from_scratch(k, v)
+                else:
+                    child.child.update(v)  # type: ignore
+
+        return super().update({
             k: v
             for k, v in d.items()
-            if not isinstance(v, dict)
-        }
-
-        return super().update(d)  # type: ignore
+            if not isinstance(v, str)
+            and not isinstance(v, dict)
+        })
 
     def data_subsection_of_subtype(self, subtype: str | int):
         if isinstance(subtype, str):
@@ -278,8 +311,8 @@ class BinaryObjectParentSection(Section):
         subsection.child.set_int(key, value)
 
     @override
-    def as_dict(self, *, interpret_dates=False):
-        d = super().as_dict(interpret_dates=interpret_dates)
+    def as_dict(self, **kwargs):
+        d = super().as_dict(**kwargs)
         for subtype_name in self.data_subtypes:
             if subtype_name in self.data_subtype_aliases:
                 continue
@@ -291,7 +324,7 @@ class BinaryObjectParentSection(Section):
                 if isinstance(subsection.child, StringBase):
                     d[subtype_name] = subsection.child.get_string()
                 else:
-                    d[subtype_name] = subsection.child.as_dict(interpret_dates=interpret_dates)
+                    d[subtype_name] = subsection.child.as_dict(**kwargs)
         return d
 
 # don't know where these boma subtypes go because they aren't in my library
