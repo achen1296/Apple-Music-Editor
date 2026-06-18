@@ -1,4 +1,4 @@
-from .library import (DEFAULT_LIBRARY_FILE, Library, load_library_bytes,
+from .library import (Library, load_library_bytes,
                       save_library_bytes)
 from .search import LibrarySearcher
 from .sections import *

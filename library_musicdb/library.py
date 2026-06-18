@@ -1,3 +1,4 @@
+import json
 import os
 import zlib
 from datetime import datetime
@@ -16,17 +17,32 @@ KEY = b"BHUILuilfghuila3"
 CIPHER = AES.new(KEY, AES.MODE_ECB)
 
 
-# this default is suitable for Windows
-DEFAULT_LIBRARY_FILE = Path(os.environ["USERPROFILE"]) / "Music" / "Apple Music" / "Apple Music Library.musiclibrary" / "Library.musicdb"
+_default_library_file = None
 
 
-def load_library_bytes(file: Path | str = DEFAULT_LIBRARY_FILE) -> bytes:
+def default_library_file():
+    global _default_library_file
+    if _default_library_file is None:
+        settings_file = Path("settings.json")
+        if settings_file.exists():
+            with open(settings_file) as f:
+                _default_library_file = Path(json.load(f)["library file"])
+        else:
+            # this default is suitable for Windows
+            _default_library_file = Path(os.environ["USERPROFILE"]) / "Music" / "Apple Music" / "Apple Music Library.musiclibrary" / "Library.musicdb"
+    return _default_library_file
+
+
+def load_library_bytes(file: Path | str | None = None) -> bytes:
     # copied from https://github.com/jsharkey13/musicdb-to-json get_library_bytes
     # changes:
     # - renames
     # - type annotations
     # - hardcoded the encryption key
     # - changed unpack_one to unpack_int
+
+    if file is None:
+        file = default_library_file()
 
     with open(file, "rb") as f:
         file_bytes = f.read()
@@ -58,15 +74,18 @@ def load_library_bytes(file: Path | str = DEFAULT_LIBRARY_FILE) -> bytes:
 
 def save_library_bytes(
     raw_bytes: bytes,
-    file: Path | str = DEFAULT_LIBRARY_FILE,
+    file: Path | str | None = None,
     *,
     make_backup=True,
     raw=False,
 ):
 
-    file = Path(file)
-    if make_backup and file.exists():
-        os.rename(file, file.with_stem(f"{file.stem} backup {datetime.now().isoformat(timespec="seconds").replace(":", ".")}"))
+    if file is None:
+        file = default_library_file()
+    else:
+        file = Path(file)
+        if make_backup and file.exists():
+            os.rename(file, file.with_stem(f"{file.stem} backup {datetime.now().isoformat(timespec="seconds").replace(":", ".")}"))
 
     # straightforward inverse of `load_library_bytes`
     if raw:
@@ -114,7 +133,9 @@ class Library(FileHeader):
     }
 
     @override
-    def __init__(self, library: bytes | bytearray | Path | str = DEFAULT_LIBRARY_FILE):
+    def __init__(self, library: bytes | bytearray | Path | str|None=None):
+        if library is None:
+            library = default_library_file()
         if isinstance(library, Path) or isinstance(library, str):
             self.file = Path(library)
             library = load_library_bytes(library)
@@ -195,7 +216,10 @@ class Library(FileHeader):
 
 if __name__ == "__main__":
     import sys
-    file = Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_LIBRARY_FILE)
+    if len(sys.argv) > 1:
+        file = Path(sys.argv[1])
+    else:
+        file = None
     save_library_bytes(
         load_library_bytes(file),
         "library.bin",
