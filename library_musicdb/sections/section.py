@@ -288,7 +288,7 @@ class Section:
             ]
         }
 
-    def set_bytes(self, offset: int | str, value: bytes):
+    def set_bytes(self, offset: int | str, value: bytes | bytearray):
         self._edit()
         if isinstance(offset, str):
             offset = self.offsets[offset]
