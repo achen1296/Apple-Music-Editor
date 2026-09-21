@@ -2,7 +2,7 @@
 **.json
 **.bin
 **.txt
+**.xml
 
 .venv
 !requirements.txt
-!requirements_player.txt
