@@ -1,12 +1,15 @@
 from library_musicdb import *
 
-from xml.etree.ElementTree import ElementTree
+from xml.etree.ElementTree import ElementTree, indent
 
 
 def write_itunes_xml(et: ElementTree, file="iTunes Music Library.xml"):
     with open(file, "wb") as f:
         f.write(b'<?xml version="1.0" encoding="UTF-8"?>')
         f.write(b'<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">"')
+
+        indent(et, "\t")
+
         et.write(
             f,
             "utf8",
