@@ -587,7 +587,7 @@ Seems completely understood: X
 | 32     | 8      | Track ID of first track in album, but sometimes 0 (is it possible to have an empty album?)                                                             | 0xC89ECA05FB184E3E  |
 | 40     | 1      | Star rating (1 star = 20, 5 stars = 100)                                                                                                               | 20                  |
 | 41     | 1      | Album inheritance of star rating from its songs                                                                                                        | see below           |
-| 42     | 1      | Suggestion flag                                                                                                                                        | see below           |
+| 42     | 2      | Suggestion flag                                                                                                                                        | see below           |
 | ...    |
 | 64     | 8      | Album ID again, but sometimes 0 (usually 0 for newer albums? iTunes ID?)                                                                               | repeat of offset 16 |
 | ...    |
@@ -665,7 +665,7 @@ Seems completely understood: X
 | ...    |
 | 96     | 4      | ? (almost always 0 but sometimes 45)                                                                                                                           |
 | 100    | 1      | ? (almost always 0 but sometimes 5)                                                                                                                            |
-| 101    | 1      | Suggestion flag                                                                                                                                                |
+| 101    | 2      | Suggestion flag                                                                                                                                                |
 | ...    |
 | 103    | 1      | ? (always 1)                                                                                                                                                   |
 | 104    | 4      | ? (almost always 0 but sometimes 1)                                                                                                                            |
@@ -749,7 +749,7 @@ Seems completely understood: X
 | 58      | 1       | Purchased (boolean)                                                                                                                                                                                                                        |
 | 59      | 1       | Content rating                                                                                                                                                                                                                             | see below                                |
 | ...     |
-| 62      | 1       | Suggestion flag                                                                                                                                                                                                                            | see below                                |
+| 62      | 2       | Suggestion flag                                                                                                                                                                                                                            | see below                                |
 | ...     |
 | 64      | 1       | ? (almost always 0, sometimes 1, likely another boolean)                                                                                                                                                                                   |
 | 65      | 1       | Star rating (1 star = 20, 5 stars = 100)                                                                                                                                                                                                   | 20                                       |
@@ -839,7 +839,7 @@ Grandchildren:
   - 0x6 = kind - e.g. "MPEG audio file"
   - 0x7 = equalizer - always a UTF-16 string that looks like "#!#\<number\>#!#" where the number is different for each equalizer option, strange that this is not a single-byte enum
   - 0x8 = comments
-  - 0xB = URL - only present for downloaded tracks, URL-encoded version of the file path "file:///C:/Users..." (UTF-8). *This is the one that Apple Music seems to use, not 0x43.*
+  - 0xB = URL - only present for downloaded tracks, URL-encoded version of the file path "file:///C:/Users..." (UTF-8). _This is the one that Apple Music seems to use, not 0x43._
   - 0xC = composer
   - 0xE = grouping
   - 0x12 = episode description
@@ -862,7 +862,7 @@ Grandchildren:
   - 0x3C = purchaser name - only present for downloaded tracks
   - 0x3F = work name
   - 0x40 = movement name
-  - 0x43 = file path - only present for downloaded tracks. *Note that this seems to be inherited from iTunes but not used by Apple Music. Instead, see 0xB.*
+  - 0x43 = file path - only present for downloaded tracks. _Note that this seems to be inherited from iTunes but not used by Apple Music. Instead, see 0xB._
   - 0x12F = series title
 - [Raw Strings](#raw-string)
   - 0x36 = artwork plist (XML) (UTF-8)
@@ -1053,48 +1053,48 @@ One always gets a number of lpma entries for special built-in playlists. They do
 
 Playlist folders are implemented as special playlists, along with the parent folder pointer ID at offset 50. See [SLst (Smart Playlist Rules List)](#slst-smart-playlist-rules-list) and its subsection [playlists](#playlists) for more on this.
 
-| Offset | Length | Meaning                                                                                                                      | Examples Value(s)  |
-| ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| 0      | 4      | Section signature                                                                                                            | lpma               |
-| 4      | 4      | Section length                                                                                                               | 368                |
-| 8      | 4      | Associated sections length                                                                                                   | 1234               |
-| 12     | 4      | Number of subsections                                                                                                        | 8                  |
-| 16     | 4      | Number of tracks in playlist                                                                                                 | 10                 |
+| Offset | Length | Meaning                                                                                                                       | Examples Value(s)  |
+| ------ | ------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| 0      | 4      | Section signature                                                                                                             | lpma               |
+| 4      | 4      | Section length                                                                                                                | 368                |
+| 8      | 4      | Associated sections length                                                                                                    | 1234               |
+| 12     | 4      | Number of subsections                                                                                                         | 8                  |
+| 16     | 4      | Number of tracks in playlist                                                                                                  | 10                 |
 | ...    |
-| 22     | 4      | Playlist creation date                                                                                                       | 3818534400         |
-| 26     | 4      | See [Global Counter](#global-counter)                                                                                        |
-| 30     | 8      | Playlist ID                                                                                                                  | 0x883E9012A290710E |
-| 38     | 1? 4?  | ? (always 1)                                                                                                                 |
+| 22     | 4      | Playlist creation date                                                                                                        | 3818534400         |
+| 26     | 4      | See [Global Counter](#global-counter)                                                                                         |
+| 30     | 8      | Playlist ID                                                                                                                   | 0x883E9012A290710E |
+| 38     | 1? 4?  | ? (always 1)                                                                                                                  |
 | ...    |
-| 44     | 1? 2?  | ? (always 0 except for the "####!####" playlist, which has 1, might be a flag indicating this special "everything" playlist) |
-| 46     | 1? 2?  | ? (always 0, except that it's 0x 00 01 on certain smart playlists (including folders))                                       |
-| 48     | 1? 2?  | ? (same as 46 but a bigger set of smart playlists)                                                                           |
-| 50     | 8      | Playlist ID of parent playlist folder (nothing to do with the [lPma](#lpma-playlist-list) section parent)                    |
+| 44     | 1?     | Always 0 except for the "####!####" playlist, which has 1, a flag indicating this is the special master playlist of all songs |
+| 46     | 1? 2?  | ? (always 0, except that it's 0x 00 01 on certain smart playlists (including folders))                                        |
+| 48     | 1? 2?  | ? (same as 46 but a bigger set of smart playlists)                                                                            |
+| 50     | 8      | Playlist ID of parent playlist folder (nothing to do with the [lPma](#lpma-playlist-list) section parent)                     |
 | ...    |
-| 78     | 2? 4?  | Special playlist ID                                                                                                          | see below          |
+| 78     | 2? 4?  | Special playlist ID                                                                                                           | see below          |
 | ...    |
-| 138    | 4      | Playlist modified date                                                                                                       | 3818534400         |
+| 138    | 4      | Playlist modified date                                                                                                        | 3818534400         |
 | ...    |
-| 174    | 2? 4?  | ? (mostly 0, otherwise mostly values \<500, but some values as high as 36k)                                                  |
-| 178    | 2? 4?  | ? (repeat of previous)                                                                                                       |
-| 182    | 4      | ? (a date?)                                                                                                                  |
-| 186    | 4?     | ? (mostly 0x 00 00 00 01, sometimes 0x 01 00 00 01)                                                                          |
-| 192    | 4?     | ? (0, 6, or 46 in decreasing frequency)                                                                                      |
+| 174    | 2? 4?  | ? (mostly 0, otherwise mostly values \<500, but some values as high as 36k)                                                   |
+| 178    | 2? 4?  | ? (repeat of previous)                                                                                                        |
+| 182    | 4      | ? (a date?)                                                                                                                   |
+| 186    | 4?     | ? (mostly 0x 00 00 00 01, sometimes 0x 01 00 00 01)                                                                           |
+| 192    | 4?     | ? (0, 6, or 46 in decreasing frequency)                                                                                       |
 | ...    |
-| 223    | 1      | Suggestion flag                                                                                                              | see below          |
+| 223    | 2      | Suggestion flag                                                                                                               | see below          |
 | ...    |
-| 263    | 16     | Artwork UUID in [artwork.sqlite](#artworksqlite), 0 if no artwork                                                            | 0xDDAE1C...        |
+| 263    | 16     | Artwork UUID in [artwork.sqlite](#artworksqlite), 0 if no artwork                                                             | 0xDDAE1C...        |
 | ...    |
-| 280    | 8      | ? (an ID?)                                                                                                                   |
+| 280    | 8      | ? (an ID?)                                                                                                                    |
 | ...    |
-| 296    | 4?     | ? (usually 102, sometimes 0, sometimes 60, observed changing when artwork changed)                                           |
-| 300    | 4?     | ? (usually 8, sometimes 0, observed changing when artwork changed)                                                           |
+| 296    | 4?     | ? (usually 102, sometimes 0, sometimes 60, observed changing when artwork changed)                                            |
+| 300    | 4?     | ? (usually 8, sometimes 0, observed changing when artwork changed)                                                            |
 | ...    |
-| 316    | 4?     | ? (usually 1, sometimes 0, observed changing when artwork changed)                                                           |
-| 320    | 4?     | ? (0, 1, or 2, observed changing when artwork changed)                                                                       |
-| 324    | 4      | Suggestion flag modified date, 0 if never                                                                                    | 3818534400         |
+| 316    | 4?     | ? (usually 1, sometimes 0, observed changing when artwork changed)                                                            |
+| 320    | 4?     | ? (0, 1, or 2, observed changing when artwork changed)                                                                        |
+| 324    | 4      | Suggestion flag modified date, 0 if never                                                                                     | 3818534400         |
 | ...    |
-| 356    | 4      | ? (almost always 2, otherwise maybe a date for 3 smart playlists in my library)                                              |
+| 356    | 4      | ? (almost always 2, otherwise maybe a date for 3 smart playlists in my library)                                               |
 | ...    |
 
 Changing the playlist's view options updates the modified date, even though the view options are stored in the [preferences folder](#preferences).
