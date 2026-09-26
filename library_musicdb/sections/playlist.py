@@ -74,6 +74,7 @@ class lpma(BinaryObjectParentSection):
         "date_created": 22,
         "global_counter": 26,
         "id_playlist": 30,
+        "is_master": 44,
         "id_parent_folder": 50,
         "special_playlist": 78,
         "date_modified": 138,
@@ -86,6 +87,7 @@ class lpma(BinaryObjectParentSection):
     offset_int_sizes = defaultdict(lambda: 4, {
         **Section.offset_int_sizes,
         "id_playlist": 8,
+        "is_master": 1,
         "id_parent_folder": 8,
         "suggestion_flag": 1,
         "uuid_1_artwork": 8,
