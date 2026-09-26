@@ -19,7 +19,7 @@ class hfma(Section):  # inner hfma only, not outer hfma which is Library
         "apple_music_version_string": 16,  # this is the only string not inside a section that is a child of boma, special methods added for it
         "id_library": 48,
         "musicdb_file_type": 56,
-        "song_count": 68,  # todo edit these counts if items are added/removed
+        "track_count": 68,  # todo edit these counts if items are added/removed
         "playlist_count": 72,
         "album_count": 76,
         "artist_count": 80,

@@ -25,12 +25,12 @@ class TrackNumerics(Section):
         "normalization": 132,
         "date_purchased": 136,
         "date_released": 140,
-        "song_duration": 156,
+        "track_duration": 156,
         "id_apple_music_album": 160,
         "id_apple_music_artist": 168,
         "id_apple_music_album_artist": 208,
         "file_size": 296,
-        "id_apple_music_song": 304,
+        "id_apple_music_track": 304,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
         "file_folder_count": 2,
@@ -191,7 +191,7 @@ class itma(BinaryObjectParentSection):
         "genre": 0x5,
         "kind": 0x6,
         "equalizer": 0x7,
-        "comment": 0x8,
+        "comments": 0x8,
         "url": 0xb,
         "composer": 0xc,
         "grouping": 0xe,
@@ -203,7 +203,8 @@ class itma(BinaryObjectParentSection):
         "album_artist": 0x1b,
         "content_rating": 0x1c,
         "plist_asset_info": 0x1d,
-        "sort_title": 0x1e,
+        "sort_name": 0x1e,
+        "sort_title": 0x1e,  # alias
         "sort_album": 0x1f,
         "sort_artist": 0x20,
         "sort_album_artist": 0x21,
@@ -224,6 +225,7 @@ class itma(BinaryObjectParentSection):
     }
     data_subtype_aliases = {
         "title",
+        "sort_title",
     }
 
     @override

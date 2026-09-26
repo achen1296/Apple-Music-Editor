@@ -47,13 +47,13 @@ class plma(BinaryObjectParentSection):
     offsets = {
         **Section.offsets,
         "subsection_count": 8,
-        "checkbox_show_song_list_checkboxes": 24,
+        "checkbox_show_track_list_checkboxes": 24,
         "id_library": 58,
         "id_library_2": 92,
         "checkbox_keep_media_folder_organized": 148,
     }
     offset_int_sizes = defaultdict(lambda: 4, {
-        "checkbox_show_song_list_checkboxes": 1,
+        "checkbox_show_track_list_checkboxes": 1,
         "id_library": 8,
         "id_library_2": 8,
         "checkbox_keep_media_folder_organized": 1,

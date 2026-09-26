@@ -74,8 +74,8 @@ class NumericField(IntEnum):
     SAMPLE_RATE = 0x6
     FILE_SIZE = 0x1C
     SKIPS = 0x44
-    SONG_DURATION = 0xD
-    TIME = SONG_DURATION  # alias matching name in GUI
+    TRACK_DURATION = 0xD
+    TIME = TRACK_DURATION  # alias matching name in GUI
     TRACK_NUMBER = 0xB
     YEAR = 0x7
 
