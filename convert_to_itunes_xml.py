@@ -43,8 +43,12 @@ def simplify_itunes_xml(file="iTunes Music Library.xml"):
     return itunes_xml
 
 
-def add_xml_dict_entry(parent: Element, key: str, value):
+def add_xml_dict_key(parent: Element, key: str):
     ET.SubElement(parent, "key").text = key
+
+
+def add_xml_dict_entry(parent: Element, key: str, value):
+    add_xml_dict_key(parent, key)
 
     if isinstance(value, bool):
         # TIL isinstance(True, int) and isinstance(False, int)
@@ -79,9 +83,52 @@ def convert_to_itunes_xml(lib: Library):
     add_xml_dict_entry(root_dict, "Features", 5)  # not sure what this is... just copied the value out of mine; maybe bit flags for something?
     add_xml_dict_entry(root_dict, "Show Content Ratings", True)  # not stored in Library.musicdb AFAIK, not a big deal to just pick a value
 
-    add_xml_dict_entry(root_dict, "Library Persistent ID", hex(lib.get_int("id_itunes_library")).upper()[2:]) # [2:] to remove 0x prefix
+    add_xml_dict_entry(root_dict, "Library Persistent ID", hex(lib.get_int("id_itunes_library")).upper()[2:])  # [2:] to remove 0x prefix
 
-    # todo: tracks and playlists
+    add_xml_dict_key(root_dict, "Tracks")
+    tracks_dict = ET.SubElement(root_dict, "dict")
+    for t in lib.tracks:
+        assert isinstance(t, Track)
+        t_id = str(t.get_int("id_track"))
+        add_xml_dict_key(tracks_dict, t_id)
+        t_dict = ET.SubElement(tracks_dict, "dict")
+
+        # iTunes seemed to assign this ID number sequentially and differently upon each export... so repeating what is called the "Persistent ID" below is probably fine since tha tis also unique...
+        add_xml_dict_entry(t_dict, "Track ID", t_id)
+        add_xml_dict_entry(t_dict, "Size", t.get_sub_int("track_numerics", "file_size"))
+        add_xml_dict_entry(t_dict, "Total Time", t.get_sub_int("track_numerics", "track_duration"))
+        add_xml_dict_entry(t_dict, "Date Modified", t.get_sub_date("track_numerics", "date_modified"))
+        add_xml_dict_entry(t_dict, "Date Added", t.get_sub_date("track_numerics", "date_added"))
+        add_xml_dict_entry(t_dict, "Bit Rate", t.get_sub_int("track_numerics", "bit_rate"))
+        add_xml_dict_entry(t_dict, "Sample Rate", t.get_sub_int("track_numerics", "sample_rate"))
+        add_xml_dict_entry(t_dict, "Play Count", t.get_sub_int("track_plays_skips", "play_count"))
+        add_xml_dict_entry(t_dict, "Play Date", t.get_sub_date("track_plays_skips", "date_last_played"))
+        add_xml_dict_entry(t_dict, "Play Date", t.get_sub_int("track_plays_skips", "date_last_played"))
+        add_xml_dict_entry(t_dict, "Play Date UTC", t.get_sub_date("track_plays_skips", "date_last_played"))
+        add_xml_dict_entry(t_dict, "Skip Count", t.get_sub_int("track_plays_skips", "skip_count"))
+        add_xml_dict_entry(t_dict, "Skip Date", t.get_sub_date("track_plays_skips", "date_last_skipped"))
+        # yes, there isn't any Skip Date UTC and Skip Date is in ISO format, not an int timestamp
+        add_xml_dict_entry(t_dict, "Loved", t.get_int("suggestion_flag") == SuggestionFlag.LOVE)
+        add_xml_dict_entry(t_dict, "Persistent ID", hex(t.get_int("id_track"))[2:].upper())
+        # todo is this the correct way to determine this? noted in readme that file type is an offset in track numerics, but not from my own investigation as my own library has 0 for all of them even though an old iTunes XML does not have all tracks as the same file type
+        add_xml_dict_entry(t_dict, "Track Type", "File" if t.get_sub_int("track_numerics", "id_apple_music_track") == 0 else "Purchased")
+        add_xml_dict_entry(t_dict, "File Folder Count",t.get_sub_int("track_numerics", "file_folder_count"))
+        add_xml_dict_entry(t_dict, "Library Folder Count",t.get_sub_int("track_numerics", "library_folder_count"))
+        add_xml_dict_entry(t_dict, "Name",t.get_sub_string("name"))
+        add_xml_dict_entry(t_dict, "Artist",t.get_sub_string("artist"))
+        add_xml_dict_entry(t_dict, "Album Artist",t.get_sub_string("album_artist"))
+        add_xml_dict_entry(t_dict, "Composer",t.get_sub_string("composer"))
+        add_xml_dict_entry(t_dict, "Album",t.get_sub_string("album"))
+        add_xml_dict_entry(t_dict, "Genre",t.get_sub_string("genre"))
+        add_xml_dict_entry(t_dict, "Kind",t.get_sub_string("kind"))
+        add_xml_dict_entry(t_dict, "Comments",t.get_sub_string("comments"))
+        add_xml_dict_entry(t_dict, "Sort Name",t.get_sub_string("sort_name"))
+        add_xml_dict_entry(t_dict, "Sort Album",t.get_sub_string("sort_album"))
+        add_xml_dict_entry(t_dict, "Sort Artist",t.get_sub_string("sort_artist"))
+        add_xml_dict_entry(t_dict, "Location",t.get_sub_string("url"))
+
+    add_xml_dict_key(root_dict, "Playlists")
+    playlists_array = ET.SubElement(root_dict, "dict")
 
     add_xml_dict_entry(root_dict, "Music Folder", lib.library_master.get_sub_string("media_folder_uri"))
 
