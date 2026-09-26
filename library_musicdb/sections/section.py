@@ -4,8 +4,9 @@ from enum import IntEnum
 from io import BytesIO
 from typing import Iterator, Type
 
-from ..util.byte_util import (pack_int_into, pack_int_into_be, unpack_int,
-                              unpack_int_be)
+from ..util.byte_util import (pack_float_into, pack_float_into_be,
+                              pack_int_into, pack_int_into_be, unpack_float,
+                              unpack_float_be, unpack_int, unpack_int_be)
 from ..util.date_util import datetime_to_int, int_to_datetime
 
 
@@ -375,6 +376,32 @@ class Section:
             offset = key
         return int_to_datetime(self.get_int((offset, 4)))
 
+    def set_float(
+        self, key: str | tuple[int, int], value: float,
+            *, _pack_float_into=pack_float_into,  # this argument is only for BigEndianSection subclass
+    ):
+        self._edit()
+        if isinstance(key, str):
+            offset = self.offsets[key]
+            size = self.offset_int_sizes[key]
+        else:
+            offset, size = key
+        _pack_float_into(self._data, offset, value, size=size)
+
+    def get_float(
+            self, key: str | tuple[int, int],
+            *, _unpack_float=unpack_float,  # this argument is only for BigEndianSection subclass
+    ) -> float:
+        if isinstance(key, str):
+            offset = self.offsets[key]
+            size = self.offset_int_sizes[key]
+        else:
+            offset, size = key
+
+        value: float = _unpack_float(self._data, offset, size=size)
+
+        return value
+
     def update(self, d: dict[str | int | tuple[int, int], bytes | int | bool]):
         """ Update multiple offsets, automatically using the correct method depending on the data type of the values. (Make sure the key type matches the method signatures too!) """
         for k, v in d.items():
@@ -416,3 +443,13 @@ class BigEndianSection(Section):
         if "_unpack_int" in kwargs:
             del kwargs["_unpack_int"]
         return super().get_int(*args, **kwargs, _unpack_int=unpack_int_be)
+
+    def set_float(self, *args, **kwargs):
+        if "_pack_float_into" in kwargs:
+            del kwargs["_pack_float_into"]
+        super().set_float(*args, **kwargs, _pack_float_into=pack_float_into_be)
+
+    def get_float(self, *args, **kwargs):
+        if "_unpack_float" in kwargs:
+            del kwargs["_unpack_float"]
+        return super().get_float(*args, **kwargs, _unpack_float=unpack_float_be)

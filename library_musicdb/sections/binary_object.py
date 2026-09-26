@@ -311,13 +311,29 @@ class BinaryObjectParentSection(Section):
 
         subsection.child.set_int(key, value)
 
+    def get_sub_float(self, subtype: str | int, key: str | tuple[int, int]):
+        subsection = self.data_subsection_of_subtype(subtype)
+
+        if isinstance(subsection.child, StringBase):
+            raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
+
+        return subsection.child.get_float(key)
+
+    def set_sub_float(self, subtype: str | int, key: str | tuple[int, int], value: int):
+        subsection = self.data_subsection_of_subtype(subtype)
+
+        if isinstance(subsection.child, StringBase):
+            raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
+
+        subsection.child.set_float(key, value)
+
     def get_sub_date(self, subtype: str | int, key: str | int):
         subsection = self.data_subsection_of_subtype(subtype)
-        return subsection.get_date(key)
+        return subsection.child.get_date(key)
 
     def set_sub_date(self, subtype: str | int, key: str | int, value: datetime):
         subsection = self.data_subsection_of_subtype(subtype)
-        return subsection.set_date(key, value)
+        return subsection.child.set_date(key, value)
 
     @override
     def as_dict(self, **kwargs):

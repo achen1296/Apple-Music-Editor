@@ -29,6 +29,18 @@ INT_SIZE_FORMATS_BE = {
     8: ">Q",
 }
 
+FLOAT_SIZE_FORMATS_LE = {
+    2: "<e",
+    4: "<f",
+    8: "<d",
+}
+
+FLOAT_SIZE_FORMATS_BE = {
+    2: ">e",
+    4: ">f",
+    8: ">d",
+}
+
 # for this project, little-endian is far more common, so left the function names without _le
 
 
@@ -54,6 +66,30 @@ def pack_int_into_be(b: bytearray, offset: int, value: int, *, size: int = 4):
 
 def pack_int_be(value: int, *, size: int = 4):
     return struct.pack(INT_SIZE_FORMATS_BE[size], value)
+
+
+def unpack_float(b: bytes, offset: int, *, size: int = 4) -> float:
+    return unpack(FLOAT_SIZE_FORMATS_LE[size], b, offset)
+
+
+def pack_float_into(b: bytearray, offset: int, value: float, *, size: int = 4):
+    struct.pack_into(FLOAT_SIZE_FORMATS_LE[size], b, offset, value)
+
+
+def pack_float(value: float, *, size: int = 4):
+    return struct.pack(FLOAT_SIZE_FORMATS_LE[size], value)
+
+
+def unpack_float_be(b: bytes, offset: int, *, size: int = 4) -> float:
+    return unpack(FLOAT_SIZE_FORMATS_BE[size], b, offset)
+
+
+def pack_float_into_be(b: bytearray, offset: int, value: float, *, size: int = 4):
+    struct.pack_into(FLOAT_SIZE_FORMATS_BE[size], b, offset, value)
+
+
+def pack_float_be(value: float, *, size: int = 4):
+    return struct.pack(FLOAT_SIZE_FORMATS_BE[size], value)
 
 
 def show_control_chars(s: str):
