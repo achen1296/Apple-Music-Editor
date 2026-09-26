@@ -1,4 +1,5 @@
 from abc import ABCMeta
+from datetime import datetime
 from enum import IntEnum
 from typing import override
 
@@ -309,6 +310,14 @@ class BinaryObjectParentSection(Section):
             raise ValueError(f"subtype {subtype} is not supposed to be a numeric container")
 
         subsection.child.set_int(key, value)
+
+    def get_sub_date(self, subtype: str | int, key: str | int):
+        subsection = self.data_subsection_of_subtype(subtype)
+        return subsection.get_date(key)
+
+    def set_sub_date(self, subtype: str | int, key: str | int, value: datetime):
+        subsection = self.data_subsection_of_subtype(subtype)
+        return subsection.set_date(key, value)
 
     @override
     def as_dict(self, **kwargs):
